@@ -16,11 +16,16 @@ milestone edit needs its own design; text is never parsed into a schedule.
 On first evaluation with a confirmed owner reading, fixed mileage adopts the latest
 reached mark (or 1,000 if below first service), plus the next future mark. At 20,800,
 oil therefore starts with 20,000 and 25,000; earlier visits remain **history unknown**,
-not fabricated missed work or completion. With no reading, only the known 1,000
-first target is exposed and its reached status is unknown. Once selected, marks
-are persisted. Subsequent evaluations enumerate every crossed mark and the next
+not fabricated missed work or completion. With no reading, the known 1,000
+first target is informational and unadopted: expose unknown reached status but do
+not persist an obligation or a mileage frontier. The first real used-bike reading
+then establishes the frontier using the rule above, without backfilling earlier
+marks. Genuinely adopted or explicitly known obligations remain durable; they are
+distinct from this placeholder. Once adopted, marks are persisted. Subsequent evaluations enumerate every crossed mark and the next
 future mark from that retained frontier. A late first reading cannot delete an
-already selected first service. Mileage below 1,000 never produces a zero mark;
+already adopted first service. A no-reading setup followed by a synthetic
+61,873-km first reading adopts oil 60,000/65,000 and filter 60,000/70,000,
+without claiming the earlier services were missed. Mileage below 1,000 never produces a zero mark;
 1,000 does not repeat. Oil repeats absolute multiples of 5,000; filter repeats
 multiples of 10,000. At 15,000 there is no filter replacement target.
 
@@ -39,10 +44,21 @@ remainder, not a second copy of the same work.
 Only confirmed performed history with explicit qualifying evidence and matching
 action, component and source/revision snapshot can be selected as an anchor.
 Owner/import notes, inspection, purchase or ambiguous hydraulic work cannot qualify
-implicitly. Anchor admission explicitly names the baseline and history. Select the
-latest qualifying date and latest qualifying odometer independently, ignoring
-missing dimensions. Backdated evidence cannot replace a later anchor. Unknown
-anchors create unknown branches, never manufacture/acquisition/zero defaults.
+implicitly. Anchor admission explicitly names the baseline and one current physical
+completion, using an expected prior anchor revision. All recurrence dimensions come
+from that single completion. Never combine a newer completion date with an older
+completion odometer: a newer date-only replacement makes the mileage branch unknown,
+even if the older replacement has a known odometer. Fixed mileage grids remain
+independent of this recurrence anchor.
+
+Anchor choices are append-only and ordered by explicit admission revision. A known
+later completion date may supersede a known earlier one; a backdated completion
+cannot silently displace a later anchor. Equal/missing dates make physical ordering
+uncertain and require explicit owner reconciliation before switching the current
+anchor. Import receipt time, row IDs and maximum odometer never settle that order.
+Qualification itself does not satisfy old adopted obligations; those require the
+explicit reconciliation below. Unknown dimensions create unknown branches, never
+manufacture/acquisition/zero defaults.
 
 Simple intervals add distance/months to actual qualifying completion dimensions.
 The next interval is not generated repeatedly while its same anchored obligation
@@ -106,5 +122,7 @@ receipts. Selection, reconciliation and their metadata commit in Room transactio
 re-evaluation after restart cannot duplicate cycles. Deterministic unit tests cover
 numeric/date boundaries and selection; connected tests cover registration admission,
 reopen, retries, edits, overlap, explicit partial reconciliation, provenance failure,
-rollback, migration and separate-process restart. No physical-owner validation is
+rollback, migration and separate-process restart. Regressions include an older complete anchor followed
+by a newer date-only replacement, and no-reading registration followed by the first
+real used-bike reading without fabricated historical obligations. No physical-owner validation is
 claimed by emulator checks.
