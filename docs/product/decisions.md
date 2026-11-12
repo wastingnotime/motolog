@@ -12,8 +12,10 @@ Examples here are synthetic, not owner records.
 On 2026-11-12 the owner said “do the project” and selected the proposed defaults
 with en-US replacing pt-BR. The direction gate is satisfied; do not ask again
 for authorization already given. **Implementation default** means a concrete
-choice made under the owner's subsequent direction to resolve routine details
-using inspection and evidence; it is not an additional claimed owner answer.
+choice made under delegated execution direction to resolve routine details using
+inspection and evidence; it is not an additional claimed owner answer. The owner
+approved product direction and en-US/ride defaults, not the exact app libraries
+or Android/toolchain versions selected here.
 **Unresolved input** remains unknown until supplied. **Proposed/deferred** means
 excluded from initial implementation, not an implicitly accepted behavior.
 
@@ -23,16 +25,17 @@ bootstrap first. Task readiness still requires its producers and scoped decision
 
 | Subject | Status | Recorded decision |
 | --- | --- | --- |
-| Direction and stack | Accepted by owner | Proceed with planned V1; one Android app module, Kotlin/Compose, transactional local storage, no backend. |
+| Product direction | Accepted by owner | Proceed with planned Android-only, local-first V1, with no backend. |
 | Display and money | Accepted by owner | en-US UI/display locale, kilometers/liters/km/h, BRL currency. Locale does not change currency or units. |
 | Ride identity and day | Accepted by owner | One persisted active ride; midnight splits daily totals, not the ride, using device-local days. |
 | Average speed | Accepted by owner | Include stopped time in eligible tracking time. |
 | Speed-change event | Accepted by owner | 5 km/h compared with the last recorded speed. |
 | Automatic detection | Accepted by owner | Sustained movement starts a ride; five minutes idle stops an automatic ride. Exact rules below are implementation defaults. |
 | Personal setup | Accepted direction | Collect current odometer/date and qualifying prior services locally; unknown anchors are allowed. No invented personal seeds. |
-| Database, Android floor, quality constants | Implementation default | Room; Android 8.0/API 26 minimum; exact toolchain, matrix and tracking defaults below and in the execution plan. |
+| Stack, Android pins and quality constants | Implementation default | One app module, Kotlin/Compose, Room; Android 8.0/API 26 minimum; exact SDK/toolchain pins, matrix and tracking defaults below and in the execution plan. These are not explicitly owner-selected libraries or versions. |
 | Bike/manual match, current reading, service evidence, physical phone | Unresolved input | Registration/owner field validation must establish these; they are not prefilled from guesses. |
-| Milestone/event/condition evaluation and configurable tracking thresholds | Proposed/deferred | Keep unsupported maintenance semantics visible. No threshold settings in initial V1; tuning requires versioned defaults and renewed test evidence. |
+| Oil and oil-filter mileage milestones | Required by coordinator review | Simple intervals are an initial increment only. The maintenance due slice must design and implement fixed absolute mileage milestones, reconciliation and unknown calendar-anchor handling before acceptance. |
+| Other unsupported schedule semantics and configurable tracking thresholds | Proposed/deferred | Unquantified condition/event facts remain visible for manual review. Other inspection milestones need separate design. No threshold settings in initial V1; tuning requires versioned defaults and renewed test evidence. |
 
 ## Registration, anchors and completed history
 
@@ -80,10 +83,11 @@ record cannot silently displace a later qualifying anchor or revise old snapshot
 
 ## Maintenance recurrence and postponement
 
-**Implementation defaults under the accepted limited-coverage direction:** support
-only explicitly typed simple interval rules with applicable verified source and
-confirmed qualifying anchors, or owner-created **Custom** intervals. For these,
-next distance/date = actual qualifying completion distance/date + interval.
+**Implementation defaults for the initial increment:** start with explicitly typed
+simple interval rules with applicable verified source and confirmed qualifying
+anchors, or owner-created **Custom** intervals. This is not the final maintenance
+acceptance scope: fixed oil/oil-filter mileage milestones are required below. For
+simple intervals, next distance/date = actual qualifying completion distance/date + interval.
 Calendar months/years use local calendar addition, clamping invalid end-of-month
 dates to the last day. Date-only service anchors use their recorded local date;
 due dates are inclusive from local midnight. Never reinterpret source milestones
@@ -93,16 +97,56 @@ Only the unconditioned replacement intervals in the manual inventory are initial
 eligible for automatic interval evaluation after applicability/anchors are confirmed
 (external fuel filter, spark-plug replacement, brake fluid and hydraulic internal
 parts with verified component scope). The brake-hose condition, air-filter use
-conditions, chain events, oil/filter and inspection milestones remain visible as
-unsupported/manual review, with no blanket “maintenance current” claim. Recording
-performed work remains available even for unsupported schedules.
+conditions and chain events remain visible for manual review; unquantified facts
+cannot be treated as automatically satisfied. Oil/filter mileage support is
+required before the maintenance due slice is accepted. Other inspection milestone
+evaluation remains unsupported pending its own design. Recording performed work
+remains available even for unsupported schedules; no blanket “maintenance current”
+claim follows from this partial coverage.
 
 A synthetic **Custom** rule of 2,000 km / 3 months completed at 20,000 km on
 January 31 is next due at 22,000 km or April 30, whichever is reached first.
 Late completion at 22,100 km anchors its next interval at 24,100 km. In contrast,
 a manual milestone at 20,000 km never moves the next fixed milestone when done
-late; automatic milestone evaluation is deferred until replay, calendar origins
-and late/partial reconciliation have a separate accepted design.
+late. The required milestone design and unknown-calendar behavior follow.
+
+**Required fixed-mileage support:** preserve the reviewed first-service targets
+and replay semantics: oil at 1,000 km, then 5,000/10,000/15,000 km and onward at
+absolute 5,000-km marks; the distinct oil-filter replacement at 1,000 km, then
+10,000/20,000/30,000 km and onward at absolute 10,000-km marks. Keep each action,
+source locator and occurrence identity separate. These facts come from the linked
+manual inventory; applicability is still a prerequisite for template admission.
+
+Late completion or postponement never shifts a later absolute milestone. A
+synthetic oil completion for the 20,000-km obligation at 20,800 km leaves the next
+mileage target at 25,000 km. A separately confirmed filter completion for its
+20,000-km obligation at 20,800 km leaves its next target at 30,000 km.
+Completing oil does not complete filter or inspections. Each completion identifies
+the milestone obligations satisfied; partial completion changes only those items.
+Older known outstanding obligations remain linked and visible when later marks
+are reached. Reconcile overlapping obligations explicitly, preserving their
+original targets and completion snapshots, rather than auto-closing earlier work.
+
+**Unknown calendar anchors:** store oil's calendar branch independently from its
+fixed mileage branch. With an unknown calendar origin, show “calendar status
+unknown” and continue evaluating known absolute mileage targets. A reached mileage
+threshold is actionable even with unknown time status; being below a mileage mark
+cannot prove not-due when time is unknown. Never infer the initial date from
+manufacture, acquisition or a synthetic zero; never add a six-month filter rule.
+A confirmed qualifying oil completion may anchor the subsequent six-calendar-month
+oil branch as an implementation default, retaining provenance and reconciling a
+calendar-triggered completion with explicitly selected mileage obligations to
+avoid duplicate work. It never moves the fixed mileage grid or proves earlier
+service. An absent/uncertain completion date leaves the calendar branch unknown.
+
+Unknown prior history is not proof of completion or missed service. Retain that
+uncertainty separately from a reached mileage threshold; do not mark all earlier
+visits completed or generate a fictitious service history. The maintenance due
+slice must document its first-run occurrence selection and late/partial
+reconciliation design before coding, then test it before acceptance. If that design leaves
+a required semantic unresolved, keep the work open; simple-interval-only delivery
+cannot satisfy final oil/filter support. Condition/event facts without quantified
+automation can remain visibly manual-review.
 
 Postponement accepts an editable absolute whole-km target, local calendar date,
 or both; at least one is required. Either threshold makes the remainder due.
@@ -122,9 +166,9 @@ apply prospectively; outstanding items retain their original rule snapshot.
 If a later occurrence includes the same unresolved action/component, show both
 links and one outstanding-work identity; do not discard, duplicate or automatically
 complete the earlier obligation. A completion explicitly lists the obligations
-it satisfies. Unsupported milestone overlap stays manual review; no engine guess
-may make such work disappear. Programmed one-off work follows the same target and
-transaction rules; corrective records do not silently complete unrelated actions.
+it satisfies. Required oil/filter milestone overlap must be designed and tested
+in the maintenance due slice; no engine guess may make work disappear. Programmed
+one-off work follows the same target and transaction rules; corrective records do not silently complete unrelated actions.
 
 ## Fuel, odometer and freshness
 

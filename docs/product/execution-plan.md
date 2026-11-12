@@ -11,15 +11,17 @@ the [manual review](../../references/fazer-ys250-blueflex-maintenance.md) now
 supplies verified partial facts, with applicability still unconfirmed.
 
 Owner direction and its exact scope are recorded in the [decision log](decisions.md).
-The owner authorized the planned V1 and routine implementation defaults; this
-plan makes that direction concrete. Bootstrap is required first, in the separate
+The owner authorized the planned V1 and en-US/ride defaults. Stack libraries and
+Android/toolchain pins below are implementation defaults selected under delegated
+execution direction, not exact choices explicitly made by the owner. This plan
+makes the product direction concrete. Bootstrap is required first, in the separate
 foundation task. This documentation change creates no app code and dispatches no
 implementation. Preserve one bike, offline authority and all excluded surfaces.
 
 ## Selected foundation defaults
 
-Use one application module **`:app` at `app/`**, Kotlin, Compose Material UI and
-Room/SQLite with app-private transactional storage. Namespace/application ID:
+As implementation defaults, use one application module **`:app` at `app/`**,
+Kotlin, Compose Material UI and Room/SQLite with app-private transactional storage. Namespace/application ID:
 `org.wastingnotime.motolog`. Packages below are internal organization, not separate
 Gradle modules or shared WNT contracts. No sibling source dependency is required.
 
@@ -104,7 +106,7 @@ only may be committed. Coordination task IDs and live readiness remain local.
 | --- | --- | --- |
 | 0. Bootstrap and persistence foundation | `main/java/org/wastingnotime/motolog/` with `MainActivity.kt`, `data/local/`, `data/repository/`, `domain/model/`; `app/schemas/`; `test/` and `androidTest/` | Launch offline; transactional rollback and replayed operation/import IDs; save/reopen representative bike, fuel, service and ride records; null/uncertain fields; distinct GPS and odometer sources; single active ride; schema/migration test harness. First schema needs reopen/round-trip tests; later schema changes require actual old-to-new migration tests. |
 | 1. Registration and sourced templates | `main/.../feature/registration/`, `domain/maintenance/`, `data/repository/`; verified nonpersonal template metadata only if admitted | One stable bike after restart; explicit applicability confirmation before admission; unknown odometer/anchors allowed; **Custom** overrides preserve baseline; unsupported/manual coverage visible. Owner-private import preview/cancel/confirm/retry tested with synthetic uncertainty/duplicate fixtures. |
-| 2. Maintenance due and pending work | `main/.../domain/maintenance/`, `feature/maintenance/`, `data/local/` | Exact distance/date boundaries, OR thresholds, month-end and unknown-anchor status; only supported interval kinds evaluate; late completion resets only interval anchors; manual milestones/condition rules remain unsupported. No “all current” from partial coverage. |
+| 2. Maintenance due and pending work | `main/.../domain/maintenance/`, `feature/maintenance/`, `data/local/` | Simple intervals first, then required fixed absolute oil and separate oil-filter milestones before acceptance. Document occurrence/reconciliation design before coding; test first-service vs later replay, just-before/exact/after marks, late/partial completion, postponed overlap and unknown calendar anchors with known mileage. Late completion resets only interval anchors, never the mileage grid; oil calendar guidance never creates a filter calendar rule. Unquantified condition/event facts remain manual-review; no “all current” from partial coverage. |
 | 3. Completion and postponement | Same maintenance packages and transactional repositories | Full, partial and no-completion postponement; absolute date/km/dual targets; original target and revision preservation; concurrent/retried saves; later-occurrence overlap; failed transactions leave neither half saved. |
 | 4. Corrective entry and history | `main/.../feature/history/`, `feature/maintenance/`, snapshot models/DAOs | Required service fields, unknown cost distinct from zero, immutable value/provenance snapshots after template edits/restart; additive correction link; corrective work cannot complete unrelated replacement. |
 | 5. Fuel and readings | `main/.../domain/fuel/`, `feature/fuel/`, `data/repository/` | Both entry modes, precision/repeating division and invalid inputs; duplicate save; chronologically neighboring readings, backdating, 24-hour freshness boundary and unavailable reasons; never substitute GPS. |
@@ -132,12 +134,17 @@ Required decisions for bootstrap are resolved as implementation defaults. Unknow
 owner readings/history and exact bike applicability defer to registration with
 explicit missing-data behavior; they never block building an empty local store.
 They **do** block adopting a particular manual seed or evaluating its unconfirmed
-anchors. Full milestone replay, first-service/calendar origins, condition/event
-coverage and motion lockout remain deferred features, visibly unsupported.
-No downstream task requiring those semantics may become ready by treating them
-as solved. An expansion beyond supported intervals needs a separate decision
-producer and updated acceptance before dispatch. Existing field-validation work
-cannot be called accepted without the physical phone and owner-controlled evidence.
+anchors. Simple intervals are an initial foundation increment, not the final
+maintenance scope. The maintenance due slice owns the required oil/oil-filter
+fixed-mileage design and implementation, including first-service/replay, late and
+partial reconciliation, postponed overlap and explicit unknown-calendar handling.
+It cannot be accepted without those capabilities and deterministic evidence.
+Unknown calendar inputs must not suppress known mileage targets or imply not-due.
+Unquantified condition/event automation, other inspection milestone designs and
+motion lockout remain deferred/unsupported with visible coverage limits.
+No consumer requiring unresolved semantics may become ready by treating them as
+solved; the required due-slice design must resolve them before its implementation.
+Existing field-validation work cannot be called accepted without the physical phone and owner-controlled evidence.
 
 The execution plan does not move any implementation task to ready. Review each
 consumer's actual scope against these gates and record the supported/unsupported
