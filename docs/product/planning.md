@@ -7,6 +7,9 @@ no Android modules, UI/data conventions, persistence or tracking implementations
 or app tests to extend. No applicable manual has been verified here, and no
 maintenance intervals are seeded.
 
+The [Android surface inventory](implementation-surfaces.md) records the inspected
+commit, actual files, greenfield slice map and a separate scaffold proposal.
+
 Before app work, inspect the then-current checkout and instructions, identify
 existing modules and test conventions, substantiate manual data privately, and
 present a repository-grounded implementation plan. Map each slice to concrete
