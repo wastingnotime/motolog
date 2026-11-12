@@ -47,14 +47,24 @@ class LocalStore(private val db: MotoLogDatabase) {
 
     /** Returns false for an exact replay. All failures roll back rows and operation receipt. */
     fun write(operationId: String, batch: WriteBatch, recordedAt: Long): Boolean {
+        return apply(operationId, fingerprint(batch.fields()), recordedAt) { batch }
+    }
+
+    /** Fingerprint owner intent before reading mutable rows. Exact retries skip preparation entirely. */
+    internal fun command(operationId: String, fields: List<Any?>, recordedAt: Long,
+        prepare: () -> WriteBatch): Boolean = apply(operationId,
+        fingerprint(listOf("maintenance-command-v1", fields)), recordedAt, prepare)
+
+    private fun apply(operationId: String, fingerprint: String, recordedAt: Long,
+        prepare: () -> WriteBatch): Boolean {
         require(operationId.isNotBlank())
-        val fingerprint = fingerprint(batch.fields())
         return db.runInTransaction<Boolean> {
             val previous = dao.operation(operationId)
             if (previous != null) {
                 if (previous.fingerprint != fingerprint) throw OperationConflict()
                 return@runInTransaction false
             }
+            val batch = prepare()
             validate(batch)
             batch.bikes.forEach(dao::insert)
             batch.baselines.forEach(dao::insert)

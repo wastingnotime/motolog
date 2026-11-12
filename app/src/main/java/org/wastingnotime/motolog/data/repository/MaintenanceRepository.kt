@@ -10,6 +10,22 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
     private val store = LocalStore(db)
     private val registration = RegistrationRepository(db)
 
+    fun createProgrammedJob(operationId: String, bikeId: String, action: String, component: String,
+        target: WorkTarget?, explicitlyUnscheduled: Boolean, now: Long): Boolean =
+        MaintenanceCommands(db).createJob(operationId, bikeId, action, component, target, explicitlyUnscheduled, now)
+
+    fun scheduleProgrammedJob(operationId: String, selected: ObligationSelection, target: WorkTarget, now: Long): Boolean =
+        MaintenanceCommands(db).scheduleJob(operationId, selected, target, now)
+
+    fun applyOutcome(operationId: String, outcome: ChecklistOutcome, readingId: String?, today: LocalDate, now: Long): Boolean =
+        MaintenanceCommands(db).outcome(operationId, outcome, readingId, today, now)
+
+    fun completedHistory(bikeId: String): List<MaintenanceHistory> = store.snapshot().histories
+        .filter { it.bikeId == bikeId }
+        .sortedWith(compareByDescending<MaintenanceHistory> { it.performedDate }.thenBy { it.id })
+
+    fun operationApplied(operationId: String): Boolean = db.dao().operation(operationId) != null
+
     /** Only explicitly qualified history is used; import receipt order is never service order. */
     fun qualifyAnchor(operationId: String, baselineId: String, historyId: String,
         expectedRevision: Int, orderReconciled: Boolean, now: Long): Boolean = db.runInTransaction<Boolean> {
@@ -103,13 +119,8 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
                 require(row.revision == selection.revision && row.state != OccurrenceState.COMPLETED) { "Obligation changed; reload" }
                 require(snapshot.occurrences.none { it.parentId == row.id }) { "Select the carried remainder, not its parent" }
                 validateHistory(history, row.bikeId, row.rule)
-                // Completing early is permitted for intervals/programmed work; fixed mileage must be reached.
-                val link = obligation(snapshot, row)
-                if (link?.branch == MILEAGE) require(history.odometerKm != null && history.odometerKm >= requireNotNull(row.originalKm)) {
-                    "A future mileage mark cannot be satisfied early" }
-                if (link?.branch == CALENDAR) require(history.performedDate != null && history.performedDate >= requireNotNull(row.originalDate)) {
-                    "Select only a reached calendar obligation" }
             }
+            validateSelectedAction(snapshot, history, rows, anchorChoice)
             anchorChoice?.let { choice ->
                 val item = registration.items(snapshot).single { it.baseline.id == choice.baselineId }
                 require(rows.all { obligation(snapshot, it)?.baselineId == choice.baselineId }) {
@@ -175,12 +186,36 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
             val review = support in listOf(RuleSupport.CONDITIONAL_INTERVAL, RuleSupport.MANUAL_REVIEW)
             val base = DueEvaluation.evaluate(targets, currentKm, today, review)
             // Current recurrence uses one physical completion. Older adopted work is shown separately.
-            RuleDue(item, support, base, currentAnchor?.id, pending)
+            RuleDue(item, support, base, currentAnchor?.id, pending,
+                snapshot.anchors.filter { it.baselineId == item.baseline.id }.maxOfOrNull { it.revision } ?: 0)
         }
-        return MaintenanceView(rules, work, FazerInventory.gaps)
+        return MaintenanceView(rules, work, FazerInventory.gaps, currentKm)
     }
 
-    private fun validateAnchorChoice(snapshot: WriteBatch, baselineId: String, history: MaintenanceHistory,
+    /** Oil's OR branches may share one physical action. A future fixed mileage mark never can. */
+    internal fun validateSelectedAction(snapshot: WriteBatch, history: MaintenanceHistory,
+        rows: List<MaintenanceOccurrence>, anchorChoice: AnchorChoice?) {
+        rows.forEach { row ->
+            val link = obligation(snapshot, row)
+            if (link?.branch == MILEAGE) require(history.odometerKm != null && history.odometerKm >= requireNotNull(row.originalKm)) {
+                "A future mileage mark cannot be satisfied early" }
+            if (link?.branch == CALENDAR) {
+                val date = requireNotNull(history.performedDate) { "Calendar satisfaction needs a performed date." }
+                if (date < requireNotNull(row.originalDate)) {
+                    val origin = snapshot.histories.single { it.id == link.anchorDateId }
+                    require(DueEvaluation.support(row.rule) == RuleSupport.OIL &&
+                        anchorChoice?.baselineId == link.baselineId && origin.performedDate != null && date >= origin.performedDate &&
+                        rows.any { mileage ->
+                            val other = obligation(snapshot, mileage)
+                            other?.baselineId == link.baselineId && other.branch == MILEAGE &&
+                                history.odometerKm != null && history.odometerKm >= requireNotNull(mileage.originalKm)
+                        }) { "Early oil calendar satisfaction needs the corresponding reached mileage selection and an atomic calendar anchor choice after the prior service." }
+                }
+            }
+        }
+    }
+
+    internal fun validateAnchorChoice(snapshot: WriteBatch, baselineId: String, history: MaintenanceHistory,
         expectedRevision: Int, orderReconciled: Boolean) {
         val historyId = history.id
         val previous = snapshot.anchors.filter { it.baselineId == baselineId }.maxByOrNull { it.revision }
@@ -205,14 +240,14 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
         .filter { it.baselineId == item.baseline.id }.maxByOrNull { it.revision }?.let { selected ->
             snapshot.histories.single { it.id == selected.historyId }.takeIf { it.rule == item.effective }
         }
-    private fun validateHistory(history: MaintenanceHistory, bikeId: String, rule: RuleValues) {
+    internal fun validateHistory(history: MaintenanceHistory, bikeId: String, rule: RuleValues) {
         require(history.bikeId == bikeId && history.rule == rule) { "Performed action/component/source revision must match exactly" }
         require(history.certainty == Certainty.CONFIRMED && !history.anchorEvidence.isNullOrBlank()) {
             "Explicit confirmed qualifying action evidence required" }
     }
     private fun root(snapshot: WriteBatch, row: MaintenanceOccurrence): MaintenanceOccurrence =
         row.parentId?.let { id -> root(snapshot, snapshot.occurrences.single { it.id == id }) } ?: row
-    private fun obligation(snapshot: WriteBatch, row: MaintenanceOccurrence): PreventiveObligation? =
+    internal fun obligation(snapshot: WriteBatch, row: MaintenanceOccurrence): PreventiveObligation? =
         snapshot.obligations.find { it.occurrenceId == root(snapshot, row).id }
 
     companion object {
@@ -227,5 +262,5 @@ data class ObligationSelection(val id: String, val revision: Int)
 data class PendingWork(val occurrence: MaintenanceOccurrence, val groupId: String,
     val originally: DueResult, val effective: DueResult, val priorAnchorNeedsReconciliation: Boolean = false)
 data class RuleDue(val item: ChecklistItem, val support: RuleSupport, val evaluation: DueResult,
-    val anchorHistoryId: String?, val pending: List<PendingWork>)
-data class MaintenanceView(val rules: List<RuleDue>, val pending: List<PendingWork>, val coverage: String)
+    val anchorHistoryId: String?, val pending: List<PendingWork>, val anchorRevision: Int = 0)
+data class MaintenanceView(val rules: List<RuleDue>, val pending: List<PendingWork>, val coverage: String, val currentKm: Long? = null)
