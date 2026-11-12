@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     MaintenanceOccurrence::class, MaintenanceHistory::class, HistoryAnnotation::class,
     FuelEvent::class, RideSession::class, RideSample::class, RideGap::class,
     ImportRow::class, AppliedOperation::class, OccurrenceRevision::class, PreventiveObligation::class, QualifyingAnchor::class,
-    ObligationSatisfaction::class], version = 3, exportSchema = true)
+    ObligationSatisfaction::class, RecordingCursor::class, QualityFix::class, RideDay::class], version = 4, exportSchema = true)
 abstract class MotoLogDatabase : RoomDatabase() {
     internal abstract fun dao(): StoreDao
 
@@ -41,12 +41,24 @@ abstract class MotoLogDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_RideSession_bikeId_recordedAt ON RideSession (bikeId, recordedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_RideGap_rideId_started_epochMillis ON RideGap (rideId, started_epochMillis)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS RecordingCursor (rideId TEXT NOT NULL PRIMARY KEY, nextSequence INTEGER NOT NULL, lastSampleId TEXT, lastEventSpeed REAL, clockEpoch TEXT NOT NULL, lastElapsed INTEGER, minimumElapsed INTEGER NOT NULL, last_epochMillis INTEGER NOT NULL, last_zoneId TEXT NOT NULL, last_offsetSeconds INTEGER NOT NULL, gap_epochMillis INTEGER, gap_zoneId TEXT, gap_offsetSeconds INTEGER, gapReason TEXT, rejected INTEGER NOT NULL, tentativeGap INTEGER NOT NULL, FOREIGN KEY(rideId) REFERENCES RideSession(id) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS QualityFix (id TEXT NOT NULL PRIMARY KEY, rideId TEXT NOT NULL, sequence INTEGER NOT NULL, observed_epochMillis INTEGER NOT NULL, observed_zoneId TEXT NOT NULL, observed_offsetSeconds INTEGER NOT NULL, clockEpoch TEXT NOT NULL, elapsed INTEGER NOT NULL, receivedElapsed INTEGER NOT NULL, latitude TEXT NOT NULL, longitude TEXT NOT NULL, accuracy TEXT, speed TEXT, speedAccuracy TEXT, rejection TEXT, FOREIGN KEY(rideId) REFERENCES RideSession(id) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_QualityFix_rideId_sequence ON QualityFix (rideId, sequence)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS RideDay (bikeId TEXT NOT NULL, date TEXT NOT NULL, zone TEXT NOT NULL, meters REAL NOT NULL, eligibleMillis INTEGER NOT NULL, gaps INTEGER NOT NULL, rejected INTEGER NOT NULL, PRIMARY KEY(bikeId, date, zone), FOREIGN KEY(bikeId) REFERENCES Bike(id) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+                installGuards(db)
+            }
+        }
+
         fun open(context: Context, name: String = "motolog.db"): MotoLogDatabase =
             builder(context, name).build()
 
         internal fun builder(context: Context, name: String): Builder<MotoLogDatabase> =
             Room.databaseBuilder(context.applicationContext, MotoLogDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) { installGuards(db) }
                 })
@@ -57,7 +69,7 @@ abstract class MotoLogDatabase : RoomDatabase() {
             for (table in listOf("Baseline", "OwnerOverride", "OdometerReading",
                 "MaintenanceHistory", "HistoryAnnotation", "FuelEvent", "RideSample",
                 "RideGap", "ImportRow", "AppliedOperation", "OccurrenceRevision",
-                "PreventiveObligation", "QualifyingAnchor", "ObligationSatisfaction")) {
+                "PreventiveObligation", "QualifyingAnchor", "ObligationSatisfaction", "QualityFix")) {
                 val exists = db.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(table)).use { it.moveToFirst() }
                 if (!exists) continue
                 for (action in listOf("UPDATE", "DELETE")) {

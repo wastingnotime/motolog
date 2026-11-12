@@ -26,7 +26,7 @@ import java.util.UUID
 
 @Composable
 fun RegistrationScreen(repository: RegistrationRepository, maintenance: MaintenanceRepository? = null,
-    fuel: FuelRepository? = null) {
+    fuel: FuelRepository? = null, rides: org.wastingnotime.motolog.feature.ride.RideRuntime? = null) {
     var snapshot by remember { mutableStateOf<WriteBatch?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -56,6 +56,10 @@ fun RegistrationScreen(repository: RegistrationRepository, maintenance: Maintena
         MaintenanceScreen(maintenance, saved.bikes.single().id, reading?.id) {
             screen = "home"; reload++
         }
+        return
+    }
+    if (screen == "rides" && rides != null && snapshot?.bikes?.isNotEmpty() == true) {
+        org.wastingnotime.motolog.feature.ride.RideScreen(rides, snapshot!!.bikes.single().id) { screen = "home"; reload++ }
         return
     }
     if (screen == "fuel" && fuel != null && snapshot?.bikes?.isNotEmpty() == true) {
@@ -91,6 +95,8 @@ fun RegistrationScreen(repository: RegistrationRepository, maintenance: Maintena
                             runCommand { repository.confirm(preview, duplicates, System.currentTimeMillis()) }
                         }
                         else -> {
+                            if (rides != null) Button(onClick = { screen = "rides" },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text("Manual ride recording") }
                             Text("Fazer YS250 · BlueFlex · BR · model 2017", style = MaterialTheme.typography.titleLarge)
                             Text("Manufacture year: ${bike.manufactureYear ?: "unknown"}")
                             if (!bike.manualConfirmed) {

@@ -124,7 +124,7 @@ data class FuelEvent(
     internal fun fields(): List<Any?> = listOf(id, bikeId, readingId, mode, totalBrl, enteredQuantity, observed, recordedAt)
 }
 
-@Entity(tableName = "RideSession", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"])], indices = [Index("bikeId"), Index(value = ["activeSlot"], unique = true)])
+@Entity(tableName = "RideSession", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"])], indices = [Index("bikeId"), Index(value = ["activeSlot"], unique = true), Index(value = ["bikeId", "recordedAt"])])
 data class RideSession(
     @PrimaryKey val id: String,
     val bikeId: String,
@@ -161,7 +161,7 @@ data class RideSample(
     internal fun fields(): List<Any?> = listOf(id, bikeId, rideId, sequence, observed, clockEpoch, elapsedMillis, latitude, longitude, accuracyMeters, speedMps, speedAccuracyMps, speedEvent, recordedAt)
 }
 
-@Entity(tableName = "RideGap", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"]), ForeignKey(entity = RideSession::class, parentColumns = ["id"], childColumns = ["rideId"])], indices = [Index("bikeId"), Index("rideId")])
+@Entity(tableName = "RideGap", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"]), ForeignKey(entity = RideSession::class, parentColumns = ["id"], childColumns = ["rideId"])], indices = [Index("bikeId"), Index("rideId"), Index(value = ["rideId", "started_epochMillis"])])
 data class RideGap(
     @PrimaryKey val id: String,
     val bikeId: String,
