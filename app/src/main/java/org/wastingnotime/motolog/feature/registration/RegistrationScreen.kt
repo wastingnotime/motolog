@@ -18,12 +18,13 @@ import kotlinx.coroutines.withContext
 import org.wastingnotime.motolog.data.local.*
 import org.wastingnotime.motolog.data.repository.*
 import org.wastingnotime.motolog.domain.maintenance.FazerInventory
+import org.wastingnotime.motolog.feature.maintenance.MaintenanceScreen
 import org.wastingnotime.motolog.domain.model.*
 import java.time.OffsetDateTime
 import java.util.UUID
 
 @Composable
-fun RegistrationScreen(repository: RegistrationRepository) {
+fun RegistrationScreen(repository: RegistrationRepository, maintenance: MaintenanceRepository? = null) {
     var snapshot by remember { mutableStateOf<WriteBatch?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -46,6 +47,14 @@ fun RegistrationScreen(repository: RegistrationRepository) {
                     else "Could not save. Reload and check for an existing entry before retrying."
             } finally { busy = false }
         }
+    }
+    if (screen == "maintenance" && maintenance != null && snapshot?.bikes?.isNotEmpty() == true) {
+        val saved = snapshot!!
+        val reading = saved.readings.filter { it.certainty == Certainty.CONFIRMED }.maxByOrNull { it.observed!!.epochMillis }
+        MaintenanceScreen(maintenance, saved.bikes.single().id, reading?.id) {
+            screen = "home"; reload++
+        }
+        return
     }
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
@@ -96,7 +105,8 @@ fun RegistrationScreen(repository: RegistrationRepository) {
                             TextButton(enabled = !busy, onClick = { error = null; reload++ }) { Text("Reload local records") }
                             Text("Checklist", style = MaterialTheme.typography.headlineSmall)
                             Text(FazerInventory.gaps, modifier = Modifier.testTag("coverage-gaps"))
-                            Text("Reference checklist only. Due status is unavailable; review the manual and any missing service evidence.")
+                            if (maintenance != null) OutlinedButton(onClick = { screen = "maintenance" }) { Text("Maintenance due and pending") }
+                            Text("Review due targets separately; missing anchors and partial coverage remain visible.")
                             repository.items(saved).forEach { item ->
                                 Card(Modifier.fillMaxWidth()) {
                                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -109,9 +119,11 @@ fun RegistrationScreen(repository: RegistrationRepository) {
                                     }
                                 }
                             }
-                            if (saved.occurrences.isNotEmpty()) Text("Open programmed work", style = MaterialTheme.typography.titleLarge)
-                            saved.occurrences.filter { it.state == OccurrenceState.PENDING }.forEach {
-                                Text("${it.rule.action}: ${it.rule.component}\nOpen · targets unknown · source: Owner")
+                            val programmed = saved.occurrences.filter { it.kind == MaintenanceKind.PROGRAMMED &&
+                                it.state != OccurrenceState.COMPLETED && saved.occurrences.none { child -> child.parentId == it.id } }
+                            if (programmed.isNotEmpty()) Text("Open programmed work", style = MaterialTheme.typography.titleLarge)
+                            programmed.forEach {
+                                Text("${it.rule.action}: ${it.rule.component}\nOpen · ${it.effectiveKm?.let { km -> "$km km" } ?: "km unknown"} / ${it.effectiveDate ?: "date unknown"} · source: Owner")
                             }
                             if (saved.importRows.isNotEmpty()) Text("Local setup notes", style = MaterialTheme.typography.titleLarge)
                             saved.importRows.forEach { Text("${it.certainty}: ${it.sourceNote}") }

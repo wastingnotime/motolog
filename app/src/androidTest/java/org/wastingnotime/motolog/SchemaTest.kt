@@ -21,6 +21,25 @@ class SchemaTest {
         context.deleteDatabase("schema-test")
     }
 
+    @Test fun versionTwoMigratesToThreeWithoutChangingEvidence() {
+        val name = "migration-2-3-test"
+        val old = helper.createDatabase(name, 2)
+        old.execSQL("INSERT INTO Bike (id, slot, manualConfirmed) VALUES ('synthetic', 1, 0)")
+        old.execSQL("INSERT INTO AppliedOperation (id, fingerprint, recordedAt) VALUES ('receipt', 'original', 1)")
+        old.close()
+        val migrated = helper.runMigrationsAndValidate(name, 3, true, MotoLogDatabase.MIGRATION_2_3)
+        migrated.query("SELECT fingerprint FROM AppliedOperation WHERE id = 'receipt'").use {
+            assertTrue(it.moveToFirst()); assertEquals("original", it.getString(0))
+        }
+        migrated.query("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'immutable_QualifyingAnchor_DELETE'").use {
+            assertTrue(it.moveToFirst())
+        }
+        migrated.close()
+        val reopened = MotoLogDatabase.open(context, name)
+        try { assertEquals("synthetic", LocalStore(reopened).snapshot().bikes.single().id) }
+        finally { reopened.close(); context.deleteDatabase(name) }
+    }
+
     @Test fun indexedMigrationPreservesEveryRecordAndReceiptAndInstallsGuards() {
         val name = "migration-1-2-test"
         val old = helper.createDatabase(name, 1)
@@ -81,7 +100,7 @@ class SchemaTest {
         }
         val before = snapshot(old)
         old.close()
-        val migrated = helper.runMigrationsAndValidate(name, 2, true, MotoLogDatabase.MIGRATION_1_2)
+        val migrated = helper.runMigrationsAndValidate(name, 3, true, MotoLogDatabase.MIGRATION_1_2, MotoLogDatabase.MIGRATION_2_3)
         assertEquals(before, snapshot(migrated))
         assertThrows(Exception::class.java) { migrated.execSQL("UPDATE MaintenanceHistory SET costBrl = '0'") }
         assertThrows(Exception::class.java) { migrated.execSQL("DELETE FROM AppliedOperation") }

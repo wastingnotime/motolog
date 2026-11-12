@@ -24,13 +24,19 @@ data class WriteBatch(
     val importRows: List<ImportRow> = emptyList(),
     val occurrenceChanges: List<MaintenanceOccurrence> = emptyList(),
     val rideChanges: List<RideSession> = emptyList(),
+    val obligations: List<PreventiveObligation> = emptyList(),
+    val anchors: List<QualifyingAnchor> = emptyList(),
+    val satisfactions: List<ObligationSatisfaction> = emptyList(),
 ) {
     internal fun fields(): List<Any?> = listOf(
         bikes.map { it.fields() }, baselines.map { it.fields() }, overrides.map { it.fields() },
         readings.map { it.fields() }, occurrences.map { it.fields() }, histories.map { it.fields() },
         annotations.map { it.fields() }, fuels.map { it.fields() }, rides.map { it.fields() },
         samples.map { it.fields() }, gaps.map { it.fields() }, importRows.map { it.fields() },
-        occurrenceChanges.map { it.fields() }, rideChanges.map { it.fields() })
+        occurrenceChanges.map { it.fields() }, rideChanges.map { it.fields() }) +
+        // Preserve v1/v2 command fingerprints when no new metadata is supplied.
+        if (obligations.isEmpty() && anchors.isEmpty() && satisfactions.isEmpty()) emptyList() else
+            listOf(obligations.map { it.fields() }, anchors.map { it.fields() }, satisfactions.map { it.fields() })
 }
 
 class OperationConflict : IllegalArgumentException("Operation ID reused with a different command")
@@ -67,6 +73,9 @@ class LocalStore(private val db: MotoLogDatabase) {
                 check(dao.update(next) == 1)
             }
             batch.histories.forEach(dao::insert)
+            batch.obligations.forEach(dao::insert)
+            batch.anchors.forEach(dao::insert)
+            batch.satisfactions.forEach(dao::insert)
             batch.annotations.forEach(dao::insert)
             batch.fuels.forEach(dao::insert)
             batch.rides.forEach(dao::insert)
@@ -91,7 +100,8 @@ class LocalStore(private val db: MotoLogDatabase) {
         WriteBatch(dao.bikeRows(), dao.baselineRows(), dao.ownerOverrideRows(),
             dao.odometerReadingRows(), dao.maintenanceOccurrenceRows(), dao.maintenanceHistoryRows(),
             dao.historyAnnotationRows(), dao.fuelEventRows(), dao.rideSessionRows(), dao.rideSampleRows(),
-            dao.rideGapRows(), dao.importRowRows())
+            dao.rideGapRows(), dao.importRowRows(), obligations = dao.obligations(),
+            anchors = dao.anchors(), satisfactions = dao.satisfactions())
     }
 
     fun occurrenceRevisions(): List<OccurrenceRevision> = dao.occurrenceRevisions()

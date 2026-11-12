@@ -96,9 +96,10 @@ as intervals. Store anchor kind and supported/unsupported status explicitly.
 Only the unconditioned replacement intervals in the manual inventory are initially
 eligible for automatic interval evaluation after applicability/anchors are confirmed
 (external fuel filter, spark-plug replacement, brake fluid and hydraulic internal
-parts with verified component scope). The brake-hose condition, air-filter use
-conditions and chain events remain visible for manual review; unquantified facts
-cannot be treated as automatically satisfied. Oil/filter mileage support is
+parts with verified component scope). The verified numeric branches of brake hoses (48 months), air filter (40,000 km)
+and chain care (500 km) are also actionable with qualifying anchors. Their
+unquantified conditions/events remain visible for manual review even below the
+numeric target; they cannot be treated as automatically satisfied. Oil/filter mileage support is
 required before the maintenance due slice is accepted. Other inspection milestone
 evaluation remains unsupported pending its own design. Recording performed work
 remains available even for unsupported schedules; no blanket “maintenance current”
@@ -320,3 +321,7 @@ Motion-based interaction lockout is **proposed/deferred**, off and absent from
 initial V1: GPS loss/jitter must not trap Stop or data recovery behind a lock.
 No interaction while moving is required for field validation. An optional future
 lockout needs a separate usability decision and must preserve Stop access.
+
+The [maintenance due design](maintenance-due.md) records first-run selection,
+fixed-mileage replay, independent calendar branches, quantified condition coverage
+and explicit obligation reconciliation before implementation.

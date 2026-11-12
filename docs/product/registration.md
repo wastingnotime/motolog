@@ -29,8 +29,8 @@ No historical completion or pending preventive occurrence is seeded. Hydraulic
 cylinder and caliper replacement evidence remains separate, with actual component
 scope required. Oil/filter and inspection milestones keep milestone semantics;
 conditional/event care is marked for manual review. Their prose facts are not an
-interval-evaluation engine. The maintenance due slice must add its required
-structured mileage grids and reconciliation before due acceptance.
+interval-evaluation engine. The [maintenance due slice](maintenance-due.md) now supplies structured mileage
+grids, one-completion recurrence anchors and explicit obligation reconciliation.
 
 Unverified schedules remain absent from storage and visible in the coverage-gap
 message. Partial coverage cannot establish that all maintenance is current.
