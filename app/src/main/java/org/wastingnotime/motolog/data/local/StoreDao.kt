@@ -6,6 +6,8 @@ import androidx.room.*
 internal interface StoreDao {
     @Insert fun insert(row: Bike)
     @Query("SELECT * FROM Bike ORDER BY id") fun bikeRows(): List<Bike>
+    @Query("UPDATE Bike SET manufactureYear = :year, manualConfirmed = 1 WHERE id = :id AND manualConfirmed = 0")
+    fun confirmManual(id: String, year: Int): Int
     @Insert fun insert(row: Baseline)
     @Query("SELECT * FROM Baseline ORDER BY id") fun baselineRows(): List<Baseline>
     @Insert fun insert(row: OwnerOverride)
