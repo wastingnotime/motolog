@@ -42,7 +42,13 @@ class MaintenanceOutcomeFlowTest {
             if (index == 3) click("Leave unscheduled intentionally")
             else {
                 if (index != 0) enter("Absolute km target (optional)", "24000")
-                if (index != 1) enter("Due date YYYY-MM-DD (optional)", date)
+                if (index != 1) enter("Due date YYYY-MM-DD (optional)", if (index == 0) "invalid-date" else date)
+                if (index == 0) {
+                    click("Create programmed job")
+                    compose.onNodeWithText("Use a valid date in YYYY-MM-DD.").assertExists()
+                    assertTrue(LocalStore(db).snapshot().occurrences.isEmpty())
+                    compose.onNodeWithText("Due date YYYY-MM-DD (optional)").performScrollTo().performTextReplacement(date)
+                }
             }
             click("Create programmed job"); pending()
         }

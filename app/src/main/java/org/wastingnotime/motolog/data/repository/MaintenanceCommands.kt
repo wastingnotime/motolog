@@ -18,7 +18,8 @@ data class WorkTarget(val km: Long? = null, val date: String? = null) {
     fun validate() {
         require(km != null || date != null) { "Enter an absolute date, whole-km target, or both." }
         require(km == null || km in 0..999_999_999_999L) { "Target must be nonnegative whole kilometers (up to 12 digits)." }
-        date?.let { require(LocalDate.parse(it).toString() == it) { "Use YYYY-MM-DD." } }
+        date?.let { value -> require(runCatching { LocalDate.parse(value).toString() == value }.getOrDefault(false)) {
+            "Use a valid date in YYYY-MM-DD." } }
     }
 }
 data class PerformedDetails(val date: String, val zone: String, val odometerKm: Long?,
@@ -85,7 +86,8 @@ internal class MaintenanceCommands(private val db: MotoLogDatabase) {
                 val first = actionRows.first()
                 require(actionRows.all { it.rule == first.rule && it.kind == first.kind }) { "One performed action must match every selected source snapshot and maintenance kind." }
                 val details = action.details
-                val date = LocalDate.parse(details.date)
+                val date = try { LocalDate.parse(details.date) }
+                    catch (_: java.time.DateTimeException) { throw IllegalArgumentException("Use a valid performed date in YYYY-MM-DD.") }
                 require(date.toString() == details.date && date <= today) { "Performed date must be today or earlier (YYYY-MM-DD)." }
                 ZoneId.of(details.zone)
                 val history = MaintenanceHistory("work:${operationId.length}:$operationId:$index", first.bikeId, first.id,
