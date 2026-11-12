@@ -106,11 +106,13 @@ class LocalStore(private val db: MotoLogDatabase) {
     }
 
     // A consistent read for restart/recovery; feature-specific query projections can follow.
-    fun snapshot(): WriteBatch = db.runInTransaction<WriteBatch> {
+    fun snapshot(includeRideEvidence: Boolean = true): WriteBatch = db.runInTransaction<WriteBatch> {
         WriteBatch(dao.bikeRows(), dao.baselineRows(), dao.ownerOverrideRows(),
             dao.odometerReadingRows(), dao.maintenanceOccurrenceRows(), dao.maintenanceHistoryRows(),
-            dao.historyAnnotationRows(), dao.fuelEventRows(), dao.rideSessionRows(), dao.rideSampleRows(),
-            dao.rideGapRows(), dao.importRowRows(), obligations = dao.obligations(),
+            dao.historyAnnotationRows(), dao.fuelEventRows(),
+            if (includeRideEvidence) dao.rideSessionRows() else emptyList(),
+            if (includeRideEvidence) dao.rideSampleRows() else emptyList(),
+            if (includeRideEvidence) dao.rideGapRows() else emptyList(), dao.importRowRows(), obligations = dao.obligations(),
             anchors = dao.anchors(), satisfactions = dao.satisfactions())
     }
 

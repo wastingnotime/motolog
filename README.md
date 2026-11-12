@@ -75,7 +75,10 @@ missing values explicitly. **Refuel and owner odometer** opens both reviewed fue
 entry modes, read-only fuel history and timestamped owner readings. The
 [fuel model](docs/product/fuel.md) preserves exact entered operands and shows
 kilometers since refuel only with fresh, chronologically suitable owner evidence.
-Recording and remaining V1 features follow in later slices.
+**Manual ride recording** opens large Start/Stop controls, explicit interruption
+recovery, GPS coverage and daily distance/average statistics. See the
+[manual recording model](docs/product/rides.md). Automatic tracking and remaining
+V1 features follow in later slices.
 
 ## License
 

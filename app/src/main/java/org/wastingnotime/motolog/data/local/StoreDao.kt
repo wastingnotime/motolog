@@ -58,4 +58,20 @@ internal interface StoreDao {
     @Query("SELECT * FROM ObligationSatisfaction ORDER BY occurrenceId") fun satisfactions(): List<ObligationSatisfaction>
     @Update fun update(row: MaintenanceOccurrence): Int
     @Update fun update(row: RideSession): Int
+    @Query("SELECT * FROM RideSession WHERE activeSlot = 1 LIMIT 1") fun activeRide(): RideSession?
+    @Query("SELECT * FROM RideSample WHERE id = :id") fun sample(id: String): RideSample?
+    @Query("SELECT * FROM RideSample WHERE rideId = :rideId ORDER BY sequence DESC LIMIT 1")
+    fun lastSample(rideId: String): RideSample?
+    @Query("SELECT * FROM RecordingCursor WHERE rideId = :rideId") fun cursor(rideId: String): RecordingCursor?
+    @Upsert fun checkpoint(row: RecordingCursor)
+    @Insert fun insert(row: QualityFix)
+    @Query("SELECT * FROM RideDay WHERE bikeId = :bikeId AND date = :date") fun days(bikeId: String, date: String): List<RideDay>
+    @Query("SELECT * FROM RideDay WHERE bikeId = :bikeId AND date = :date AND zone = :zone")
+    fun day(bikeId: String, date: String, zone: String): RideDay?
+    @Upsert fun project(row: RideDay)
+    @Query("SELECT * FROM RideSession WHERE bikeId = :bikeId ORDER BY recordedAt DESC LIMIT 20")
+    fun recentRides(bikeId: String): List<RideSession>
+    @Query("SELECT * FROM RideGap WHERE rideId = :rideId ORDER BY started_epochMillis DESC LIMIT 20")
+    fun recentGaps(rideId: String): List<RideGap>
+
 }

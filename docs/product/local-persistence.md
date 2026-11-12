@@ -101,7 +101,7 @@ freshness and source admission belong to their domain commands.
 
 ## Schema evolution and verification
 
-Versions 1, 2 and 3 are exported in `app/schemas/`. Version 1 is the first schema;
+Versions 1, 2, 3 and 4 are exported in `app/schemas/`. Version 1 is the first schema;
 there is no invented v0-to-v1 migration. Version 2 adds chronology and ride-time
 indexes through the explicit `MIGRATION_1_2`. Version 3 adds the three append-only
 maintenance metadata tables via `MIGRATION_2_3`, preserving prior rows and receipt
@@ -163,3 +163,11 @@ ordering, unchanged history after template edits/postponement, missing/zero cost
 rollback and concurrent receipt replay. It supports separate-process `phase=seed`
 and `phase=verify` restart checks. `CorrectiveServiceFlowTest` covers validation,
 form restoration, retry and read-only field visibility with synthetic data.
+
+
+Manual recording uses schema 4's bounded `RecordingCursor`, append-only
+`QualityFix` and touched-day `RideDay` projections. Capture and daily/status
+refreshes do not use `LocalStore.snapshot()`; the checklist's snapshot excludes
+ride evidence. Schema 3→4 also indexes recent rides and gaps. Existing evidence
+and operation receipts are preserved. See [manual recording](rides.md) for atomic
+callback transactions, timestamp-based gap handling and explicit recovery.

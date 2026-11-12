@@ -40,6 +40,34 @@ class SchemaTest {
         finally { reopened.close(); context.deleteDatabase(name) }
     }
 
+    @Test fun versionThreeRecordingMigrationKeepsActiveRideAndReceiptsRecoverable() {
+        val name = "migration-3-4-test"
+        val old = helper.createDatabase(name, 3)
+        old.execSQL("INSERT INTO Bike (id, slot, manualConfirmed) VALUES ('synthetic', 1, 0)")
+        old.execSQL("INSERT INTO AppliedOperation (id, fingerprint, recordedAt) VALUES ('receipt', 'original', 1)")
+        old.execSQL("INSERT INTO RideSession (id, bikeId, state, activeSlot, ownership, started_epochMillis, started_zoneId, started_offsetSeconds, algorithmVersion, recordedAt, revision) VALUES ('ride', 'synthetic', 'ACTIVE', 1, 'MANUAL', 1700000000000, 'UTC', 0, 'legacy-v1', 1700000000000, 0)")
+        old.close()
+        val migrated = helper.runMigrationsAndValidate(name, 4, true, MotoLogDatabase.MIGRATION_3_4)
+        migrated.query("SELECT fingerprint FROM AppliedOperation WHERE id = 'receipt'").use {
+            assertTrue(it.moveToFirst()); assertEquals("original", it.getString(0))
+        }
+        migrated.query("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = 'immutable_QualityFix_DELETE'").use { assertTrue(it.moveToFirst()) }
+        migrated.close()
+        val db = MotoLogDatabase.open(context, name)
+        try {
+            val repository = org.wastingnotime.motolog.data.repository.RideRepository(db)
+            repository.interrupt("PROCESS_RESTART", org.wastingnotime.motolog.domain.model.Observation(1700000001000, "UTC", 0))
+            assertEquals(org.wastingnotime.motolog.domain.model.RideState.INTERRUPTED, repository.status().first!!.state)
+            assertNotNull(repository.status().second!!.gap)
+            assertThrows(IllegalArgumentException::class.java) {
+                repository.resume("ride", org.wastingnotime.motolog.domain.model.Observation(1700000001000, "UTC", 0), "new")
+            }
+            repository.stop("ride", org.wastingnotime.motolog.domain.model.Observation(1700000001000, "UTC", 0), true)
+            assertNull(repository.status().first)
+            assertEquals(1700000000000, db.dao().ride("ride")!!.ended!!.epochMillis)
+        } finally { db.close(); context.deleteDatabase(name) }
+    }
+
     @Test fun indexedMigrationPreservesEveryRecordAndReceiptAndInstallsGuards() {
         val name = "migration-1-2-test"
         val old = helper.createDatabase(name, 1)

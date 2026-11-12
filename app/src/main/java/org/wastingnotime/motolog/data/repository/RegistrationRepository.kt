@@ -9,7 +9,7 @@ import java.time.ZoneId
 /** Feature commands wrap read/validate/write in the same Room transaction. No personal seeds. */
 class RegistrationRepository(private val db: MotoLogDatabase) {
     private val store = LocalStore(db)
-    fun snapshot() = store.snapshot()
+    fun snapshot() = store.snapshot(includeRideEvidence = false)
 
     fun register(id: String, manufactureYear: Int?, manualMatch: Boolean,
         reading: OdometerReading?, now: Long): Boolean = db.runInTransaction<Boolean> {
