@@ -1,5 +1,9 @@
 # Android implementation surface inventory
 
+This is a historical inspection. The later [decision log](decisions.md) and
+[execution plan](execution-plan.md) resolve the bootstrap proposal and routine
+defaults under recorded owner direction; they do not create Android code.
+
 ## Inspection baseline
 
 Inspected on 2026-11-12 at commit
