@@ -5,10 +5,10 @@ V1 helps one owner record fuel and service, track rides, and see what needs
 attention for one Yamaha Fazer 250 in the 2016/2017 target range. Exact model,
 market and manual applicability must be verified before maintenance data is seeded.
 
-This repository currently contains product guidance and references policy only.
-There is no installable app, Android module, build or app test suite yet.
-Owner direction to proceed is recorded. The repository-grounded decisions and
-execution plan below resolve the planning gate; bootstrap starts separately.
+The repository includes an Android foundation: a launchable Compose shell and
+transactional, app-private Room storage. Product features follow the accepted
+[execution plan](docs/product/execution-plan.md). No personal records or maintenance
+seeds are bundled. Owner direction is recorded in the decision log.
 
 ## V1 scope
 
@@ -37,6 +37,28 @@ this Android-only setup.
 
 Repository docs own technical truth; WNT tasks track coordination and acceptance.
 Personal vehicle records and source manuals stay outside this public repository.
+
+## Build and verify
+
+Use JDK 21 and an Android SDK with platform 36 and Build Tools 35.0.0. Set
+`ANDROID_HOME` or an ignored `local.properties` SDK path. The checksum-pinned
+Gradle 8.13 wrapper resolves exact catalog dependencies; the initial build needs
+network access, while the app does not.
+
+```sh
+./gradlew --version
+./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
+./gradlew :app:connectedDebugAndroidTest
+```
+
+Select an app-owned device with `ANDROID_SERIAL` for connected checks. The initial
+verified target is API 35 x86_64; API 26/30/36 and physical-device checks remain
+in the plan's device matrix. Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
+CI runs build/lint/unit checks; connected tests require a separate device.
+
+See [storage contracts and migration policy](docs/product/local-persistence.md)
+for transaction/retry, precision, time, provenance and restart checks. The current
+screen is a shell; registration and recording flows are subsequent slices.
 
 ## License
 
