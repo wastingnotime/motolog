@@ -85,8 +85,12 @@ Oil has a separate six-calendar-month branch, anchored only by explicitly
 qualified oil completion dates. An unknown calendar origin remains unknown while
 mileage continues to evaluate. The time obligation and mileage obligations are
 shown in the same work group. Filter has no calendar branch. Completion may
-explicitly satisfy both reached branches with the same performed action, but
-never implicitly satisfies a future mileage target or shifts its grid. An
+explicitly satisfy both branches with the same performed action when mileage
+wins first, including the old calendar reminder before its deadline. This requires
+explicitly selecting that calendar obligation and the corresponding reached oil
+mileage obligation, a performed date at/after the calendar branch's anchor service,
+and an atomic choice of this same physical completion as the new calendar anchor.
+It never implicitly satisfies a future mileage target or shifts its grid. An
 early/time-only oil change can anchor the next calendar branch without
 completing a future mileage mark.
 
@@ -119,10 +123,8 @@ Postponement changes effective targets only, with revision audit/reason.
 Original reached status remains visible independently from effective status. A
 postponed 20,000 target at 26,000 coexists with the 25,000 obligation; a shared
 work group prevents representing them as two required physical services.
-Full/partial UI commands and stricter target-advancement validation belong to
-TASK-16; this slice supplies persistent obligations, qualification and explicit
-atomic reconciliation. Partial remainders retain their original snapshot and
-parent chain.
+Whole-checklist commands and target-advancement validation are implemented as
+described below. Partial remainders retain their original snapshot and parent chain.
 
 ## Quantified condition branches and coverage
 
@@ -151,3 +153,56 @@ newer date-only replacement, and no-reading registration followed by the first
 real used-bike reading without fabricated historical obligations. The large-jump
 regression checks prompt rejection, unchanged storage and safe rejection again
 after restart. No physical-owner validation is claimed by emulator checks.
+
+## Atomic checklist outcomes and programmed jobs
+
+The owner explicitly selects open targets to form a checklist, then marks all,
+some or none as performed. Targets for one physical action with the same source
+snapshot can be selected together; different actions get separate immutable
+history rows. `ChecklistOutcome` commits all histories, satisfaction snapshots,
+optional `AnchorChoice` admissions, occurrence changes, revision audits and
+remainders in one Room transaction under one stable operation ID. Its receipt
+fingerprints the full command before inspecting mutable rows. Exact retries
+(including after later changes or restart) skip preparation; changed intent under
+the same ID conflicts. No per-item save can leave half a checklist committed.
+The receipt time and evaluation day do not change owner intent on retry.
+
+Full completion closes only selected outstanding occurrences. Full postponement
+updates every selected occurrence's effective targets and writes no history.
+Partial completion records the performed actions and creates exactly one child
+for each remaining selected occurrence. Each parent retains its pre-carry target
+and audit; the child retains the original target, immutable rule/source snapshot,
+kind and parent link with the newly chosen effective target. Only the leaf is
+shown as outstanding. Repeated partial actions extend that chain, and completion
+of another revision never silently closes an older remainder. Later template
+edits affect prospective work; outstanding and completed snapshots stay intact.
+
+A new postponement requires an absolute date, whole-km target, or both, plus a
+reason. Each supplied dimension must advance its prior effective target and be
+future relative to today/the selected confirmed owner reading. Without a reading,
+no current mileage or convenience km value is invented. Dropping a threshold
+requires explicit confirmation that only the retained dimension will trigger
+work. Tomorrow and owner reading + 100 km are editable convenience values, not
+maintenance recommendations. Original/effective due status remains separate.
+
+Ordinary **New programmed job** entry collects an action/component and date,
+kilometers, both, or an explicit **Leave unscheduled intentionally** choice.
+All are Custom owner work and stay visible until explicitly performed. Imported
+unscheduled jobs use the same **Initial scheduling** flow; it adds the first
+effective target without manufacturing history or claiming a postponement.
+The original absent targets remain absent, with the scheduling reason and revision
+audit retained. Later changes use normal postponement. No setup-history entry is
+needed for ordinary jobs. Initial scheduling may intentionally set an already
+reached target; postponement must advance it. No maintenance command reads or
+changes rides, permissions or tracking availability.
+
+**Completed maintenance history** is read-only, ordered newest performed date
+first with unknown dates last. It displays action, owner odometer, qualifying
+evidence, targets and source/revision snapshots. Multiple obligations satisfied
+by one physical action retain separate immutable satisfaction target snapshots.
+Connected tests exercise whole-checklist all/none/some outcomes, late-write
+rollback, retry after subsequent actions, concurrent requests, carried work across
+edits, ordinary UI scheduling and process-separated restart. The oil OR regression
+covers a June reminder cleared by the explicitly selected mileage-due replacement
+in March, with the next calendar target in September and the future mileage grid
+unchanged. Emulator checks do not establish physical-owner field acceptance.

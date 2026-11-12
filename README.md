@@ -5,9 +5,9 @@ V1 helps one owner record fuel and service, track rides, and see what needs
 attention for one Yamaha Fazer 250 in the 2016/2017 target range. Exact model,
 market and manual applicability must be verified before maintenance data is seeded.
 
-The repository includes offline Android registration, sourced editable checklists
-and reviewed local setup entry on transactional, app-private Room storage. Product
-features follow the accepted [execution plan](docs/product/execution-plan.md). No
+The repository includes offline Android registration, sourced editable checklists,
+reviewed local setup entry and atomic maintenance outcomes on transactional,
+app-private Room storage. Product features follow the accepted [execution plan](docs/product/execution-plan.md). No
 personal records are bundled; verified manual facts are admitted only after local
 owner confirmation of exact bike/manual applicability. Owner direction is recorded
 in the decision log.
@@ -64,8 +64,11 @@ for transaction/retry, precision, time, provenance and restart checks. See
 admission, missing coverage, Custom edits and owner-reviewed local setup.
 The [maintenance due model](docs/product/maintenance-due.md) implements supported
 intervals, fixed oil/filter grids, independent oil calendar status and persistent
-pending work. Open **Maintenance due and pending** from the checklist. Completion
-and postponement forms, recording and remaining V1 features follow in later slices.
+pending work. Open **Maintenance due and pending** from the checklist. Select a checklist there
+to record full completion, full postponement or atomic
+partial completion with linked remaining work. Create/schedule ordinary programmed
+jobs there with date/km/both targets or explicitly unscheduled, and review read-only
+completed history. Recording and remaining V1 features follow in later slices.
 
 ## License
 
