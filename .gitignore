@@ -7,3 +7,8 @@ local.properties
 *.jks
 *.keystore
 *.pdf
+
+# Private inputs stay outside this repository; these are fallback guards.
+/private/
+/local-evidence/
+*.pdf.*
