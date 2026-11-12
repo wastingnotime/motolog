@@ -10,6 +10,9 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
     private val store = LocalStore(db)
     private val registration = RegistrationRepository(db)
 
+    fun recordCorrective(operationId: String, bikeId: String, details: PerformedDetails, today: LocalDate, now: Long): Boolean =
+        MaintenanceCommands(db).corrective(operationId, bikeId, details, today, now)
+
     fun createProgrammedJob(operationId: String, bikeId: String, action: String, component: String,
         target: WorkTarget?, explicitlyUnscheduled: Boolean, now: Long): Boolean =
         MaintenanceCommands(db).createJob(operationId, bikeId, action, component, target, explicitlyUnscheduled, now)

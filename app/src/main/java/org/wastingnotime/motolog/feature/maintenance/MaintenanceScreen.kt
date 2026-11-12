@@ -77,7 +77,7 @@ fun MaintenanceScreen(repository: MaintenanceRepository, bikeId: String, reading
                 }) { Text(if (screen == "pending") "Back to checklist" else "Back to pending work") }
                 Text("Maintenance due and pending", style = MaterialTheme.typography.headlineSmall)
                 Text("Evaluated against the displayed last confirmed owner reading. Historical readings do not prove current mileage.")
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("maintenance-error")) }
+                error?.takeIf { screen != "corrective" }?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("maintenance-error")) }
                 notice?.let { Text(it) }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 val saved = view
@@ -94,6 +94,9 @@ fun MaintenanceScreen(repository: MaintenanceRepository, bikeId: String, reading
                                     } else repository.createProgrammedJob(operationId, bikeId, action, component, target, unscheduled, System.currentTimeMillis())
                                 }
                             }
+                        }
+                        "corrective" -> CorrectiveForm(busy, error) { details ->
+                            command { repository.recordCorrective(operationId, bikeId, details, LocalDate.now(), System.currentTimeMillis()) }
                         }
                         "outcome" -> {
                             val rows = model.pending.filter { it.occurrence.id in chosen }.map { it.occurrence }
@@ -120,17 +123,20 @@ fun MaintenanceScreen(repository: MaintenanceRepository, bikeId: String, reading
                                 Card(Modifier.fillMaxWidth()) {
                                     Column(Modifier.padding(16.dp)) {
                                         Text("${row.performedDate ?: "Date unknown"} · ${row.rule.action} ${row.rule.component}")
+                                        Text("Kind: ${row.kind} · Service zone: ${row.performedZone ?: "unknown"}")
+                                        Text("Issue / description: ${row.description}")
                                         Text("${row.performedWork}\nOwner odometer: ${row.odometerKm ?: "unknown"} km\nEvidence: ${row.anchorEvidence ?: "unknown"}")
                                         Text("Original: ${row.originalKm ?: "unknown"} km / ${row.originalDate ?: "unknown"}\nEffective: ${row.effectiveKm ?: "unknown"} km / ${row.effectiveDate ?: "unknown"}")
-                                        row.costBrl?.let { Text("Cost BRL: $it") }
-                                        row.location?.let { Text("Location: $it") }
-                                        row.replacements?.let { Text("Replacements: $it") }
+                                        Text("Cost BRL: ${row.costBrl?.let { java.math.BigDecimal(it).setScale(2).toPlainString() } ?: "unknown"}")
+                                        Text("Location: ${row.location ?: "unknown"}")
+                                        Text("Replacements: ${row.replacements ?: "unknown"}")
                                         Text("Source: ${row.rule.sourceKind} · ${row.rule.sourceIdentity ?: "Owner"} · ${row.rule.locator.orEmpty()} · baseline ${row.rule.baselineRevision ?: "unknown"} / override ${row.rule.overrideRevision ?: "none"}")
                                     }
                                 }
                             }
                         }
                         else -> {
+                            Button(enabled = !busy, onClick = { open("corrective") }) { Text("New corrective service") }
                             Button(enabled = !busy, onClick = { open("create") }) { Text("New programmed job") }
                             TextButton(onClick = { open("history") }) { Text("Completed maintenance history") }
                             Text("Select targets to form a checklist. Only explicitly selected targets can be completed or postponed.")

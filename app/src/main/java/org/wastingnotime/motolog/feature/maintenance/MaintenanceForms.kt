@@ -129,3 +129,35 @@ internal fun OutcomeForm(rows: List<MaintenanceOccurrence>, model: MaintenanceVi
         } catch (e: IllegalArgumentException) { error = e.message }
     }) { Text(if (remaining.isEmpty()) "Save full completion" else if (done.isEmpty()) "Save full postponement" else "Save partial completion and remainder") }
 }
+
+@Composable
+internal fun CorrectiveForm(busy: Boolean, saveError: String?, save: (PerformedDetails) -> Unit) {
+    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var zone by rememberSaveable { mutableStateOf(ZoneId.systemDefault().id) }
+    var issue by rememberSaveable { mutableStateOf("") }
+    var work by rememberSaveable { mutableStateOf("") }
+    var km by rememberSaveable { mutableStateOf("") }
+    var cost by rememberSaveable { mutableStateOf("") }
+    var location by rememberSaveable { mutableStateOf("") }
+    var replacements by rememberSaveable { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    Text("Record corrective service", style = MaterialTheme.typography.headlineSmall)
+    Text("Record work actually performed. Pending checklist work stays open. Blank optional fields remain unknown; enter 0 for a known zero cost.")
+    MaintenanceField("Service date YYYY-MM-DD", date, busy) { date = it }
+    MaintenanceField("Service time zone", zone, busy) { zone = it }
+    MaintenanceField("Issue / description", issue, busy) { issue = it }
+    MaintenanceField("Work performed", work, busy) { work = it }
+    MaintenanceField("Motorcycle owner odometer km (optional)", km, busy) { km = it }
+    MaintenanceField("Service cost BRL (optional)", cost, busy) { cost = it }
+    MaintenanceField("Service location (optional)", location, busy) { location = it }
+    MaintenanceField("Service replacements (optional)", replacements, busy) { replacements = it }
+    (error ?: saveError)?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("maintenance-error")) }
+    Button(enabled = !busy, onClick = {
+        try {
+            error = null
+            require(km.isBlank() || km.matches(Regex("[0-9]{1,12}"))) { "Enter nonnegative whole owner kilometers (up to 12 digits), or leave unknown." }
+            save(PerformedDetails(date, zone, km.takeIf { it.isNotBlank() }?.toLong(), work, "",
+                issue, cost.takeIf { it.isNotBlank() }, location.takeIf { it.isNotBlank() }, replacements.takeIf { it.isNotBlank() }))
+        } catch (e: IllegalArgumentException) { error = e.message }
+    }) { Text("Save corrective service") }
+}

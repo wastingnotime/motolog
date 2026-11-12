@@ -35,6 +35,42 @@ internal class MaintenanceCommands(private val db: MotoLogDatabase) {
     private val store = LocalStore(db)
     private val due = MaintenanceRepository(db)
 
+    /** Standalone performed work never satisfies a checklist or establishes an anchor. */
+    fun corrective(operationId: String, bikeId: String, details: PerformedDetails, today: LocalDate, now: Long): Boolean =
+        store.command(operationId, listOf("corrective", bikeId, details.fields()), now) {
+            val date = runCatching { LocalDate.parse(details.date) }.getOrNull()
+            require(date != null && date.toString() == details.date && date <= today) {
+                "Service date must be today or earlier (YYYY-MM-DD)." }
+            require(runCatching { ZoneId.of(details.zone) }.isSuccess) { "Choose a valid service time zone." }
+            require(details.description.isNotBlank()) { "Describe the issue or reason for service." }
+            require(details.work.isNotBlank()) { "Describe the work performed." }
+            require(details.odometerKm == null || details.odometerKm in 0..999_999_999_999L) {
+                "Enter nonnegative whole owner kilometers (up to 12 digits), or leave unknown." }
+            val cost = details.costBrl?.let { value ->
+                require(runCatching { DecimalValues.normalize(value, 2, false) }.isSuccess) {
+                    "Cost must be nonnegative BRL with up to 12 whole digits and two decimal places, or blank for unknown." }
+                DecimalValues.normalize(value, 2, false)
+            }
+            val snapshot = store.snapshot()
+            require(snapshot.bikes.any { it.id == bikeId }) { "Register the motorcycle first." }
+            details.odometerKm?.let { km ->
+                // Date-only services cannot be ordered within a day. Compare only strictly earlier/later days.
+                val neighbors = snapshot.histories.filter { it.bikeId == bikeId && it.certainty == Certainty.CONFIRMED }
+                    .mapNotNull { row -> row.performedDate?.let { day -> row.odometerKm?.let { day to it } } } +
+                    snapshot.readings.filter { it.bikeId == bikeId && it.certainty == Certainty.CONFIRMED }
+                        .mapNotNull { row -> row.observed?.let { observed -> row.kilometers?.let {
+                            java.time.Instant.ofEpochMilli(observed.epochMillis).atZone(ZoneId.of(observed.zoneId)).toLocalDate().toString() to it
+                        } } }
+                require(neighbors.none { (day, reading) -> (day < details.date && reading > km) || (day > details.date && reading < km) }) {
+                    "Service odometer conflicts with earlier or later confirmed owner readings. Review the date or kilometers; leave unknown if uncertain." }
+            }
+            WriteBatch(histories = listOf(MaintenanceHistory("corrective:$operationId", bikeId, null,
+                RuleValues("Corrective service", "Owner motorcycle", SourceKind.CUSTOM, sourceIdentity = "Owner corrective entry"),
+                null, null, null, null, details.date, details.zone, details.odometerKm, Certainty.CONFIRMED,
+                cost, details.location?.trim()?.takeIf { it.isNotEmpty() }, details.description.trim(), details.work.trim(),
+                details.replacements?.trim()?.takeIf { it.isNotEmpty() }, null, now, MaintenanceKind.CORRECTIVE)))
+        }
+
     fun createJob(operationId: String, bikeId: String, action: String, component: String,
         target: WorkTarget?, explicitlyUnscheduled: Boolean, now: Long): Boolean =
         store.command(operationId, listOf("create-job", bikeId, action, component, target?.fields(), explicitlyUnscheduled), now) {
