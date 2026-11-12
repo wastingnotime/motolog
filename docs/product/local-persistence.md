@@ -4,8 +4,9 @@ The Android foundation follows the accepted [execution plan](execution-plan.md).
 It provides internal Room storage for feature slices. The
 [registration slice](registration.md) now creates the single bike, admits verified
 manual facts after owner confirmation and supports reviewed local setup. No owner
-history is bundled. Maintenance evaluation, fuel forms and location capture
-remain downstream work. These are private app internals, not exported contracts.
+history is bundled. The [maintenance slice](maintenance-due.md) now supplies due evaluation,
+persistent obligation selection and explicit reconciliation. Fuel forms and location
+capture remain downstream work. These are private app internals, not exported contracts.
 
 ## Storage and authority
 
@@ -25,6 +26,7 @@ No import file or manual is bundled.
 | OdometerReading | Owner or owner-import evidence only; whole nonnegative km, nullable if unknown. Confirmed readings require an observed instant and value, and must agree with both chronological neighbors. Uncertain readings/notes survive without advancing authority. |
 | MaintenanceOccurrence / OccurrenceRevision | Original targets/rule snapshot are fixed. Effective targets/state change with compare-and-set revision increments; every change archives prior effective targets/state and change reason. Parent IDs link remainders. Completed occurrences cannot reopen. |
 | MaintenanceHistory / HistoryAnnotation | Copied action/component, source identity/edition/locator and revisions, original/effective targets, date/zone, reading certainty, optional exact cost/location and performed work/replacements/anchor evidence. History is append-only, including at SQL level; corrections are additive annotations. |
+| PreventiveObligation / QualifyingAnchor / ObligationSatisfaction | Append-only baseline/cycle identity, selected single physical-completion anchor revisions and explicit many-obligations-to-one-performed-action links. Every satisfaction retains its own original/effective targets and selected revision alongside the immutable occurrence rule and performed history snapshots. Current recurrence cannot combine dimensions from different completions. |
 | FuelEvent | Exact normalized total BRL and entered liters or unit price, entry mode, observed instant and optional linked owner reading. Linked reading must describe the same observation. Derived values are not saved over original operands. |
 | RideSession | Algorithm version, receipt time and reducer checkpoint, manual/automatic ownership, observed start/end, revision. ACTIVE and INTERRUPTED reserve unique slot 1; ENDED releases it. Recovery keeps the same ID. Lifecycle algorithms and checkpoint serialization belong to tracking. |
 | RideSample / RideGap | Quality samples, independent speed-event flag, sequence, clock epoch, elapsed ms, zone/offset, receipt time and raw unrounded GPS coordinates/speed/accuracy; rejected-fix reason/count and gap boundaries separately. Unique ride/sequence and ordered monotonic times within a clock epoch. No GPS field or method updates an odometer. |
@@ -98,10 +100,14 @@ freshness and source admission belong to their domain commands.
 
 ## Schema evolution and verification
 
-Versions 1 and 2 are exported in `app/schemas/`. Version 1 is the first schema;
+Versions 1, 2 and 3 are exported in `app/schemas/`. Version 1 is the first schema;
 there is no invented v0-to-v1 migration. Version 2 adds chronology and ride-time
-indexes through the explicit `MIGRATION_1_2`. `SchemaTest` validates the initial
-schema and migrates synthetic records in every table, comparing all persisted
+indexes through the explicit `MIGRATION_1_2`. Version 3 adds the three append-only
+maintenance metadata tables via `MIGRATION_2_3`, preserving prior rows and receipt
+fingerprints. Empty new metadata groups are omitted from legacy command encoding;
+older commands remain replay-compatible. `SchemaTest` validates both 1→3 and 2→3
+paths, plus the initial schema, and migrates synthetic records in every prior table,
+comparing all persisted
 values (including nulls, source snapshots and operation receipts), then verifies
 append-only guards and a production reopen. It uses
 [Room's MigrationTestHelper](https://developer.android.com/training/data-storage/room/migrating-db-versions).
@@ -127,3 +133,11 @@ JSON 1.8.1 and produced an AbstractMethodError. This is a verified compatibility
 adjustment, not a change to the chosen storage library. The
 [upstream serialization release](https://github.com/Kotlin/kotlinx.serialization/releases/tag/v1.8.1)
 and Room dependencies identify the version used.
+
+`MaintenanceTest`, `MaintenanceFlowTest` and `MaintenanceRestartProbeTest` exercise
+fixed grids, anchor ordering/missing dimensions, source admission, persistent
+unknowns, pending/remainder grouping, explicit reconciliation, UI coverage and
+separate-process offline restart. Reconciliation accepts an optional `AnchorChoice`
+in the same transaction; TASK-16 should use it for qualifying completions, and
+compose multi-action outcomes in an enclosing Room transaction. The read model
+separates current recurrence from retained obligations requiring reconciliation.

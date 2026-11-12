@@ -50,6 +50,12 @@ internal interface StoreDao {
     fun nextConfirmedReading(bikeId: String, time: Long): OdometerReading?
     @Query("SELECT * FROM OdometerReading WHERE bikeId = :bikeId AND certainty = 'CONFIRMED' AND observed_epochMillis = :time AND id != :id LIMIT 1")
     fun simultaneousConfirmedReading(bikeId: String, time: Long, id: String): OdometerReading?
+    @Insert fun insert(row: PreventiveObligation)
+    @Query("SELECT * FROM PreventiveObligation ORDER BY occurrenceId") fun obligations(): List<PreventiveObligation>
+    @Insert fun insert(row: QualifyingAnchor)
+    @Query("SELECT * FROM QualifyingAnchor ORDER BY id") fun anchors(): List<QualifyingAnchor>
+    @Insert fun insert(row: ObligationSatisfaction)
+    @Query("SELECT * FROM ObligationSatisfaction ORDER BY occurrenceId") fun satisfactions(): List<ObligationSatisfaction>
     @Update fun update(row: MaintenanceOccurrence): Int
     @Update fun update(row: RideSession): Int
 }

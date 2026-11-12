@@ -62,7 +62,10 @@ See [storage contracts and migration policy](docs/product/local-persistence.md)
 for transaction/retry, precision, time, provenance and restart checks. See
 [registration and checklist behavior](docs/product/registration.md) for manual
 admission, missing coverage, Custom edits and owner-reviewed local setup.
-Recording and due evaluation remain subsequent slices.
+The [maintenance due model](docs/product/maintenance-due.md) implements supported
+intervals, fixed oil/filter grids, independent oil calendar status and persistent
+pending work. Open **Maintenance due and pending** from the checklist. Completion
+and postponement forms, recording and remaining V1 features follow in later slices.
 
 ## License
 
