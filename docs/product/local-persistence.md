@@ -47,6 +47,17 @@ ordered content returns false; reusing the ID with different content throws
 `OperationConflict`. Receipt time is metadata and excluded from the fingerprint.
 Concurrent copies serialize under SQLite transactions and commit once.
 
+Durable writes query only touched records. Confirmed readings use indexed strict
+predecessor/successor lookups plus an equal-time peer check, including other rows
+inserted by the same transaction. Uncertain readings do not enter those queries.
+Samples use the unique ride/sequence index for neighboring samples; closing a ride
+uses an indexed EXISTS lookup beyond the proposed end. Start is immutable, so
+ordinary checkpoints do not read sample history. Restart `snapshot()` remains a
+separate, explicit full read. `WritePathTest` records executed SQL against 30
+historical rides/300 samples and checks SQLite EXPLAIN plans for index use without
+history scans or temporary sorting; it also covers backdated/equal-time readings,
+unsorted batches, sample neighbors and rollback of an invalid ride end.
+
 The SHA-256 fingerprint uses an explicit length-delimited, type-tagged field order;
 list order is significant. Keep this encoding and enum/type identities compatible
 when evolving commands, or version it with replay support. Do not regenerate a
@@ -86,9 +97,12 @@ freshness and source admission belong to their domain commands.
 
 ## Schema evolution and verification
 
-Version 1 is the first schema. Its generated JSON is committed in `app/schemas/`.
-There is no earlier released database and therefore no invented v0-to-v1 migration.
-`SchemaTest` creates and validates the exported initial schema with
+Versions 1 and 2 are exported in `app/schemas/`. Version 1 is the first schema;
+there is no invented v0-to-v1 migration. Version 2 adds chronology and ride-time
+indexes through the explicit `MIGRATION_1_2`. `SchemaTest` validates the initial
+schema and migrates synthetic records in every table, comparing all persisted
+values (including nulls, source snapshots and operation receipts), then verifies
+append-only guards and a production reopen. It uses
 [Room's MigrationTestHelper](https://developer.android.com/training/data-storage/room/migrating-db-versions).
 Production reopen/round-trip tests exercise the actual callback-created triggers.
 Unsupported database versions fail without destructive fallback; a test verifies

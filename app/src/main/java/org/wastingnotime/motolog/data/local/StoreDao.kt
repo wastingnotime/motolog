@@ -40,8 +40,14 @@ internal interface StoreDao {
     fun previousSample(rideId: String, sequence: Long): RideSample?
     @Query("SELECT * FROM RideSample WHERE rideId = :rideId AND sequence > :sequence ORDER BY sequence LIMIT 1")
     fun nextSample(rideId: String, sequence: Long): RideSample?
-    @Query("SELECT COUNT(*) FROM RideSample WHERE rideId = :rideId AND (observed_epochMillis < :start OR observed_epochMillis > :end)")
-    fun samplesOutsideRide(rideId: String, start: Long, end: Long): Int
+    @Query("SELECT EXISTS(SELECT 1 FROM RideSample WHERE rideId = :rideId AND observed_epochMillis > :end)")
+    fun hasSampleAfter(rideId: String, end: Long): Boolean
+    @Query("SELECT * FROM OdometerReading WHERE bikeId = :bikeId AND certainty = 'CONFIRMED' AND observed_epochMillis < :time ORDER BY observed_epochMillis DESC LIMIT 1")
+    fun previousConfirmedReading(bikeId: String, time: Long): OdometerReading?
+    @Query("SELECT * FROM OdometerReading WHERE bikeId = :bikeId AND certainty = 'CONFIRMED' AND observed_epochMillis > :time ORDER BY observed_epochMillis LIMIT 1")
+    fun nextConfirmedReading(bikeId: String, time: Long): OdometerReading?
+    @Query("SELECT * FROM OdometerReading WHERE bikeId = :bikeId AND certainty = 'CONFIRMED' AND observed_epochMillis = :time AND id != :id LIMIT 1")
+    fun simultaneousConfirmedReading(bikeId: String, time: Long, id: String): OdometerReading?
     @Update fun update(row: MaintenanceOccurrence): Int
     @Update fun update(row: RideSession): Int
 }

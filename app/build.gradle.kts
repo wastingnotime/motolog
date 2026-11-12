@@ -39,3 +39,9 @@ dependencies {
     androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.room.testing)
 }
+
+// Room exports the current schema during KSP. Package that schema even on the
+// first clean build, before Android merges test assets for migration checks.
+tasks.matching { it.name == "mergeDebugAndroidTestAssets" }.configureEach {
+    dependsOn("kspDebugKotlin")
+}

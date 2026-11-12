@@ -54,7 +54,7 @@ class LocalStore(private val db: MotoLogDatabase) {
             batch.baselines.forEach(dao::insert)
             batch.overrides.forEach(dao::insert)
             batch.readings.forEach(dao::insert)
-            if (batch.readings.isNotEmpty()) validateReadingSequence()
+            batch.readings.filter { it.certainty == Certainty.CONFIRMED }.forEach(::validateReadingNeighbors)
             batch.occurrences.forEach(dao::insert)
             batch.occurrenceChanges.forEach { next ->
                 val old = dao.occurrence(next.id) ?: throw StaleRevision()
@@ -160,14 +160,20 @@ class LocalStore(private val db: MotoLogDatabase) {
         }
     }
 
-    private fun validateReadingSequence() {
-        val confirmed = dao.odometerReadingRows().filter { it.certainty == Certainty.CONFIRMED }
-            .sortedBy { it.observed!!.epochMillis }
-        confirmed.zipWithNext().forEach { (a, b) ->
-            require(a.kilometers!! <= b.kilometers!!) { "Owner odometer decreases" }
-            if (a.observed!!.epochMillis == b.observed!!.epochMillis) {
-                require(a.kilometers == b.kilometers) { "Conflicting simultaneous readings" }
-            }
+    // All batch readings have been inserted, so neighbors include this command's other rows.
+    // Strict temporal neighbors are separate from equal-time peers: a batch of equal-time
+    // readings must still be checked against the readings before and after that timestamp.
+    private fun validateReadingNeighbors(reading: OdometerReading) {
+        val time = requireNotNull(reading.observed).epochMillis
+        val km = requireNotNull(reading.kilometers)
+        dao.previousConfirmedReading(reading.bikeId, time)?.let { previous ->
+            require(requireNotNull(previous.kilometers) <= km) { "Owner odometer decreases" }
+        }
+        dao.nextConfirmedReading(reading.bikeId, time)?.let { next ->
+            require(km <= requireNotNull(next.kilometers)) { "Owner odometer decreases" }
+        }
+        dao.simultaneousConfirmedReading(reading.bikeId, time, reading.id)?.let { peer ->
+            require(km == peer.kilometers) { "Conflicting simultaneous readings" }
         }
     }
 
@@ -187,10 +193,11 @@ class LocalStore(private val db: MotoLogDatabase) {
                 if (next.clockEpoch == sample.clockEpoch) require(next.elapsedMillis > sample.elapsedMillis)
             }
         }
-        batch.rideChanges.forEach { ride ->
-            require(dao.samplesOutsideRide(ride.id, ride.started.epochMillis,
-                ride.ended?.epochMillis ?: Long.MAX_VALUE) == 0)
-        }
+        batch.rideChanges.forEach { ride -> ride.ended?.let { end ->
+            // Start is immutable and new samples already checked above. Only a new end
+            // boundary can exclude existing samples; checkpoints need no history query.
+            require(!dao.hasSampleAfter(ride.id, end.epochMillis))
+        } }
     }
 }
 

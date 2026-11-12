@@ -40,7 +40,8 @@ data class OwnerOverride(
     internal fun fields(): List<Any?> = listOf(id, bikeId, baselineId, revision, rule)
 }
 
-@Entity(tableName = "OdometerReading", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"])], indices = [Index("bikeId")])
+@Entity(tableName = "OdometerReading", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"])],
+    indices = [Index("bikeId"), Index(value = ["bikeId", "certainty", "observed_epochMillis"])])
 data class OdometerReading(
     @PrimaryKey val id: String,
     val bikeId: String,
@@ -140,7 +141,7 @@ data class RideSession(
     internal fun fields(): List<Any?> = listOf(id, bikeId, state, activeSlot, ownership, started, ended, algorithmVersion, recordedAt, revision, reducerState)
 }
 
-@Entity(tableName = "RideSample", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"]), ForeignKey(entity = RideSession::class, parentColumns = ["id"], childColumns = ["rideId"])], indices = [Index("bikeId"), Index("rideId"), Index(value = ["rideId", "sequence"], unique = true)])
+@Entity(tableName = "RideSample", foreignKeys = [ForeignKey(entity = Bike::class, parentColumns = ["id"], childColumns = ["bikeId"]), ForeignKey(entity = RideSession::class, parentColumns = ["id"], childColumns = ["rideId"])], indices = [Index("bikeId"), Index("rideId"), Index(value = ["rideId", "sequence"], unique = true), Index(value = ["rideId", "observed_epochMillis"])])
 data class RideSample(
     @PrimaryKey val id: String,
     val bikeId: String,
