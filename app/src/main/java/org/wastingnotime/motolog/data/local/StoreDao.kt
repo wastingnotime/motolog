@@ -62,6 +62,8 @@ internal interface StoreDao {
     @Query("SELECT * FROM RideSample WHERE id = :id") fun sample(id: String): RideSample?
     @Query("SELECT * FROM RideSample WHERE rideId = :rideId ORDER BY sequence DESC LIMIT 1")
     fun lastSample(rideId: String): RideSample?
+    @Query("SELECT * FROM RideSample WHERE rideId = :rideId ORDER BY observed_epochMillis DESC LIMIT 1")
+    fun latestObservedSample(rideId: String): RideSample?
     @Query("SELECT * FROM RecordingCursor WHERE rideId = :rideId") fun cursor(rideId: String): RecordingCursor?
     @Upsert fun checkpoint(row: RecordingCursor)
     @Insert fun insert(row: QualityFix)

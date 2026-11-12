@@ -72,13 +72,24 @@ class RideRepository(private val db: MotoLogDatabase) {
     fun stop(id: String, at: Observation, lastObservation: Boolean = false) = db.runInTransaction {
         val ride = dao.activeRide()?.takeIf { it.id == id } ?: return@runInTransaction
         var cursor = cursor(ride)
-        val end = if (lastObservation || ride.state == RideState.INTERRUPTED) cursor.last else at
-        // Wall-clock changes can put a later observation before start. Preserve evidence, bound end.
-        val bounded = if (end.epochMillis < ride.started.epochMillis) ride.started else end
-        if (cursor.gap == null && end != cursor.last) cursor = openGap(ride, cursor, "STOP_TAIL")
+        at.validate()
+        val requestedEnd = if (lastObservation || ride.state == RideState.INTERRUPTED) cursor.last else at
+        // The last arrival can itself follow a backward wall-clock change. Use the
+        // indexed latest observed usable sample so End encloses every saved sample.
+        val latestUsable = dao.latestObservedSample(ride.id)?.observed ?: ride.started
+        val boundary = if (cursor.last.epochMillis > latestUsable.epochMillis) cursor.last else latestUsable
+        val backwards = requestedEnd.epochMillis < boundary.epochMillis
+        val end = if (backwards) boundary else requestedEnd
+        if (backwards) {
+            // Retain the actual backward observation separately from the safe end.
+            // This discontinuity is evidence only: no segment or eligible time is added.
+            dao.insert(RideGap("${ride.id}:stop-clock:${ride.revision}", ride.bikeId, ride.id,
+                "WALL_CLOCK_CHANGE_AT_STOP", 0, boundary, requestedEnd))
+            addDay(ride.bikeId, boundary, gaps = 1)
+        } else if (cursor.gap == null && end != cursor.last) cursor = openGap(ride, cursor, "STOP_TAIL")
         closeGap(ride, cursor, end)
         dao.checkpoint(cursor.copy(lastSampleId = null, lastEventSpeed = null, gap = null, gapReason = null, tentativeGap = false))
-        dao.update(ride.copy(state = RideState.ENDED, activeSlot = null, ended = bounded, revision = ride.revision + 1))
+        dao.update(ride.copy(state = RideState.ENDED, activeSlot = null, ended = end, revision = ride.revision + 1))
     }
 
     fun heartbeat(at: Observation, elapsed: Long, epoch: String) = db.runInTransaction {
@@ -101,7 +112,11 @@ class RideRepository(private val db: MotoLogDatabase) {
         var cursor = cursor(ride)
         val quality = RideMetrics.rejection(fix)
         val order = if (fix.clockEpoch == cursor.clockEpoch && cursor.lastElapsed != null && fix.elapsed <= cursor.lastElapsed!!) "NON_INCREASING_TIME" else null
-        val rejection = quality ?: order ?: if (fix.clockEpoch == cursor.clockEpoch && fix.elapsed < cursor.minimumElapsed) "BEFORE_CAPTURE" else null
+        val rejection = quality ?: order ?: when {
+            fix.clockEpoch == cursor.clockEpoch && fix.elapsed < cursor.minimumElapsed -> "BEFORE_CAPTURE"
+            fix.observed.epochMillis < ride.started.epochMillis -> "WALL_CLOCK_BEFORE_START"
+            else -> null
+        }
         dao.insert(QualityFix(receipt, ride.id, cursor.nextSequence, fix.observed, fix.clockEpoch,
             fix.elapsed, fix.receivedElapsed, fix.latitude.toString(), fix.longitude.toString(),
             fix.accuracy?.toString(), fix.speed?.toString(), fix.speedAccuracy?.toString(), rejection))

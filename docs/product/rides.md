@@ -32,8 +32,14 @@ unobserved gap; **End at last observation** ends at the last persisted usable fi
 or start when there is no usable fix. Permission revocation or force-stop can kill
 the process before cleanup; reopening performs the same recovery. No distance or
 eligible time is inferred during downtime. The unmeasured tail between the last
-fix and an explicit Stop is also retained as a gap. A storage/capture failure stops capture
-and reports a possibly missing tail of up to five seconds under normal operation;
+fix and an explicit Stop is also retained as a gap. If Stop's wall clock is before
+already saved usable observations, End uses the latest such existing observation
+(or start when none exists), including when an earlier clock change already moved
+the cursor backward. An explicit `WALL_CLOCK_CHANGE_AT_STOP` gap retains the
+backward stop observation; the fallback contributes no distance or eligible time.
+Usable samples cannot predate ride start; such clock-discontinuous deliveries remain
+raw rejected evidence. Retrying Stop preserves the original end, samples and totals.
+A storage/capture failure stops capture and reports a possibly missing tail of up to five seconds under normal operation;
 committed evidence survives. The recorder does not promise survival of arbitrary
 storage stalls, power loss or OEM process restrictions.
 

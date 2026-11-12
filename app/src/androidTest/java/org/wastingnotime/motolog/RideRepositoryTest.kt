@@ -152,6 +152,44 @@ class RideRepositoryTest {
         assertEquals(10_000, rides.view("bike", "2026-01-01").millis + rides.view("bike", "2026-01-02").millis)
     }
 
+    @Test fun stopAfterBackwardWallClockUsesExistingObservationAndRetryPreservesSamplesAndMetrics() {
+        // Stop before the latest fix, including when Stop is still after ride start.
+        // Also cover a cursor that already moved back below an earlier saved sample.
+        for ((index, movedCursor) in listOf(false, true).withIndex()) {
+            val id = "backward-$index"
+            rides.start(id, "bike", at(0), "epoch")
+            rides.accept("a", fix(0)); rides.accept("b", fix(1_000)); rides.accept("c", fix(2_000))
+            if (movedCursor) {
+                rides.accept("clock-back", fix(3_000).copy(observed = at(500)))
+                assertEquals(at(500), rides.status().second!!.last)
+            }
+            val samples = db.dao().rideSampleRows().filter { it.rideId == id }
+            val before = rides.view("bike", "2026-01-01")
+            val requestedEnd = at(if (movedCursor) 750 else 1_500)
+            rides.stop(id, requestedEnd)
+            val saved = db.dao().ride(id)!!
+            assertEquals(at(2_000), saved.ended)
+            assertTrue(samples.all { it.observed.epochMillis in saved.started.epochMillis..saved.ended!!.epochMillis })
+            assertEquals(before.millis, rides.view("bike", "2026-01-01").millis)
+            assertEquals(before.meters, rides.view("bike", "2026-01-01").meters, 0.0)
+            val gaps = db.dao().rideGapRows().filter { it.rideId == id }
+            val discontinuity = gaps.single { it.reason == "WALL_CLOCK_CHANGE_AT_STOP" }
+            assertEquals(at(2_000), discontinuity.started)
+            assertEquals(requestedEnd, discontinuity.ended)
+            rides.stop(id, at(-1_000)) // Retry cannot revise End, create another gap or count time.
+            assertEquals(saved, db.dao().ride(id))
+            assertEquals(gaps, db.dao().rideGapRows().filter { it.rideId == id })
+            assertEquals(samples, db.dao().rideSampleRows().filter { it.rideId == id })
+            assertEquals(before.millis, rides.view("bike", "2026-01-01").millis)
+            assertEquals(before.meters, rides.view("bike", "2026-01-01").meters, 0.0)
+        }
+        rides.start("before-start", "bike", at(0), "epoch")
+        rides.accept("before-start-clock", fix(1_000).copy(observed = at(-1_000)))
+        assertNull(db.dao().lastSample("before-start")) // Raw quality evidence remains, outside-ride usable samples do not.
+        rides.stop("before-start", at(-500))
+        assertEquals(at(0), db.dao().ride("before-start")!!.ended)
+    }
+
     @Test fun writeFailureRollsBackRawEvidenceCursorReceiptAndProjectionTogether() {
         rides.start("atomic", "bike", at(0), "epoch")
         rides.accept("a", fix(0)); rides.accept("b", fix(1_000))
