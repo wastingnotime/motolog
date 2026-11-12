@@ -187,13 +187,13 @@ class LocalStore(private val db: MotoLogDatabase) {
         val time = requireNotNull(reading.observed).epochMillis
         val km = requireNotNull(reading.kilometers)
         dao.previousConfirmedReading(reading.bikeId, time)?.let { previous ->
-            require(requireNotNull(previous.kilometers) <= km) { "Owner odometer decreases" }
+            require(requireNotNull(previous.kilometers) <= km) { "Owner odometer decreases. Review both chronological neighbors; retain uncertain historical evidence through local setup." }
         }
         dao.nextConfirmedReading(reading.bikeId, time)?.let { next ->
-            require(km <= requireNotNull(next.kilometers)) { "Owner odometer decreases" }
+            require(km <= requireNotNull(next.kilometers)) { "Owner odometer decreases. Review both chronological neighbors; retain uncertain historical evidence through local setup." }
         }
         dao.simultaneousConfirmedReading(reading.bikeId, time, reading.id)?.let { peer ->
-            require(km == peer.kilometers) { "Conflicting simultaneous readings" }
+            require(km == peer.kilometers) { "Conflicting simultaneous readings. Review historical evidence privately; retain uncertain evidence through local setup." }
         }
     }
 

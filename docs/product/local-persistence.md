@@ -5,8 +5,9 @@ It provides internal Room storage for feature slices. The
 [registration slice](registration.md) now creates the single bike, admits verified
 manual facts after owner confirmation and supports reviewed local setup. No owner
 history is bundled. The [maintenance slice](maintenance-due.md) now supplies due evaluation,
-persistent obligation selection and explicit reconciliation. Fuel forms and location
-capture remain downstream work. These are private app internals, not exported contracts.
+persistent obligation selection and explicit reconciliation. The [fuel slice](fuel.md)
+adds both entry modes and fresh owner observations using the existing schema.
+Location capture remains downstream work. These are private app internals, not exported contracts.
 
 ## Storage and authority
 

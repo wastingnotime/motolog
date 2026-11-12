@@ -71,7 +71,11 @@ jobs there with date/km/both targets or explicitly unscheduled, and review read-
 completed history. **New corrective service** records performed date/zone, issue,
 work, optional owner odometer, cost, location and replacements without completing
 pending checklist work. Completed history combines all maintenance kinds and shows
-missing values explicitly. Recording and remaining V1 features follow in later slices.
+missing values explicitly. **Refuel and owner odometer** opens both reviewed fuel
+entry modes, read-only fuel history and timestamped owner readings. The
+[fuel model](docs/product/fuel.md) preserves exact entered operands and shows
+kilometers since refuel only with fresh, chronologically suitable owner evidence.
+Recording and remaining V1 features follow in later slices.
 
 ## License
 

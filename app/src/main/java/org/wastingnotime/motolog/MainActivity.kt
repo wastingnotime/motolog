@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import org.wastingnotime.motolog.data.repository.RegistrationRepository
 import org.wastingnotime.motolog.data.repository.MaintenanceRepository
+import org.wastingnotime.motolog.data.repository.FuelRepository
 import org.wastingnotime.motolog.feature.registration.RegistrationScreen
 
 class MainActivity : ComponentActivity() {
@@ -15,6 +16,7 @@ class MainActivity : ComponentActivity() {
         val database = (application as MotoLogApplication).database
         val repository = RegistrationRepository(database)
         val maintenance = MaintenanceRepository(database)
-        setContent { RegistrationScreen(repository, maintenance) }
+        val fuel = FuelRepository(database)
+        setContent { RegistrationScreen(repository, maintenance, fuel) }
     }
 }
