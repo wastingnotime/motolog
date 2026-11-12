@@ -1,9 +1,10 @@
 # Local persistence foundation
 
 The Android foundation follows the accepted [execution plan](execution-plan.md).
-It provides an empty, launchable offline shell and internal Room storage for later
-feature slices. It does not seed a bike, a reading, a manual interval or owner
-history. Registration, maintenance evaluation, fuel forms and location capture
+It provides internal Room storage for feature slices. The
+[registration slice](registration.md) now creates the single bike, admits verified
+manual facts after owner confirmation and supports reviewed local setup. No owner
+history is bundled. Maintenance evaluation, fuel forms and location capture
 remain downstream work. These are private app internals, not exported contracts.
 
 ## Storage and authority
@@ -19,7 +20,7 @@ No import file or manual is bundled.
 
 | Rows | Contract |
 | --- | --- |
-| Bike | Caller-generated stable ID, unique singleton slot 1; unknown identity fields nullable. The target preset and applicability confirmation UI are future registration work. |
+| Bike | Caller-generated stable ID, unique singleton slot 1; unknown identity fields nullable. Registration admits the preset and confirms manual applicability explicitly; match confirmation and baseline insertion are atomic. |
 | Baseline / OwnerOverride | Append-only revisions with separate identities; overrides retain the baseline link and use Custom provenance. Revision IDs must be stable per rule revision. Unknown schedules/coverage remain explicit; no interval is inferred. |
 | OdometerReading | Owner or owner-import evidence only; whole nonnegative km, nullable if unknown. Confirmed readings require an observed instant and value, and must agree with both chronological neighbors. Uncertain readings/notes survive without advancing authority. |
 | MaintenanceOccurrence / OccurrenceRevision | Original targets/rule snapshot are fixed. Effective targets/state change with compare-and-set revision increments; every change archives prior effective targets/state and change reason. Parent IDs link remainders. Completed occurrences cannot reopen. |
@@ -27,7 +28,7 @@ No import file or manual is bundled.
 | FuelEvent | Exact normalized total BRL and entered liters or unit price, entry mode, observed instant and optional linked owner reading. Linked reading must describe the same observation. Derived values are not saved over original operands. |
 | RideSession | Algorithm version, receipt time and reducer checkpoint, manual/automatic ownership, observed start/end, revision. ACTIVE and INTERRUPTED reserve unique slot 1; ENDED releases it. Recovery keeps the same ID. Lifecycle algorithms and checkpoint serialization belong to tracking. |
 | RideSample / RideGap | Quality samples, independent speed-event flag, sequence, clock epoch, elapsed ms, zone/offset, receipt time and raw unrounded GPS coordinates/speed/accuracy; rejected-fix reason/count and gap boundaries separately. Unique ride/sequence and ordered monotonic times within a clock epoch. No GPS field or method updates an odometer. |
-| ImportRow / AppliedOperation | Stable batch/row identity, private source note/certainty and command fingerprint receipt. No automatic import or duplicate matching is implemented. |
+| ImportRow / AppliedOperation | Stable batch/row identity, private source note/certainty and command fingerprint receipt. Registration provides reviewed local entry with duplicate candidates; no automatic private import or merge is performed. |
 
 The single-bike constraint makes all linked records belong to that one stable
 identity. Foreign keys restrict deletion. There is no replace/upsert or history

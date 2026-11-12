@@ -5,10 +5,12 @@ V1 helps one owner record fuel and service, track rides, and see what needs
 attention for one Yamaha Fazer 250 in the 2016/2017 target range. Exact model,
 market and manual applicability must be verified before maintenance data is seeded.
 
-The repository includes an Android foundation: a launchable Compose shell and
-transactional, app-private Room storage. Product features follow the accepted
-[execution plan](docs/product/execution-plan.md). No personal records or maintenance
-seeds are bundled. Owner direction is recorded in the decision log.
+The repository includes offline Android registration, sourced editable checklists
+and reviewed local setup entry on transactional, app-private Room storage. Product
+features follow the accepted [execution plan](docs/product/execution-plan.md). No
+personal records are bundled; verified manual facts are admitted only after local
+owner confirmation of exact bike/manual applicability. Owner direction is recorded
+in the decision log.
 
 ## V1 scope
 
@@ -57,8 +59,10 @@ in the plan's device matrix. Debug APK: `app/build/outputs/apk/debug/app-debug.a
 CI runs build/lint/unit checks; connected tests require a separate device.
 
 See [storage contracts and migration policy](docs/product/local-persistence.md)
-for transaction/retry, precision, time, provenance and restart checks. The current
-screen is a shell; registration and recording flows are subsequent slices.
+for transaction/retry, precision, time, provenance and restart checks. See
+[registration and checklist behavior](docs/product/registration.md) for manual
+admission, missing coverage, Custom edits and owner-reviewed local setup.
+Recording and due evaluation remain subsequent slices.
 
 ## License
 
