@@ -1,0 +1,1676 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "14313e1dd1f907784ebc6ecfd14d8571",
+    "entities": [
+      {
+        "tableName": "Bike",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `slot` INTEGER NOT NULL, `model` TEXT, `variant` TEXT, `market` TEXT, `modelYear` INTEGER, `manufactureYear` INTEGER, `manualConfirmed` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "slot",
+            "columnName": "slot",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "model",
+            "columnName": "model",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "variant",
+            "columnName": "variant",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "market",
+            "columnName": "market",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "modelYear",
+            "columnName": "modelYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "manufactureYear",
+            "columnName": "manufactureYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "manualConfirmed",
+            "columnName": "manualConfirmed",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_Bike_slot",
+            "unique": true,
+            "columnNames": [
+              "slot"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_Bike_slot` ON `${TABLE_NAME}` (`slot`)"
+          }
+        ]
+      },
+      {
+        "tableName": "Baseline",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `revision` INTEGER NOT NULL, `rule_action` TEXT NOT NULL, `rule_component` TEXT NOT NULL, `rule_sourceKind` TEXT NOT NULL, `rule_sourceIdentity` TEXT, `rule_edition` TEXT, `rule_locator` TEXT, `rule_baselineRevision` INTEGER, `rule_overrideRevision` INTEGER, `rule_scheduleKind` TEXT NOT NULL, `rule_intervalKm` INTEGER, `rule_intervalMonths` INTEGER, `rule_coverageNote` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.action",
+            "columnName": "rule_action",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.component",
+            "columnName": "rule_component",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceKind",
+            "columnName": "rule_sourceKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceIdentity",
+            "columnName": "rule_sourceIdentity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.edition",
+            "columnName": "rule_edition",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.locator",
+            "columnName": "rule_locator",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.baselineRevision",
+            "columnName": "rule_baselineRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.overrideRevision",
+            "columnName": "rule_overrideRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.scheduleKind",
+            "columnName": "rule_scheduleKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.intervalKm",
+            "columnName": "rule_intervalKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.intervalMonths",
+            "columnName": "rule_intervalMonths",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.coverageNote",
+            "columnName": "rule_coverageNote",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_Baseline_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_Baseline_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_Baseline_bikeId_id_revision",
+            "unique": true,
+            "columnNames": [
+              "bikeId",
+              "id",
+              "revision"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_Baseline_bikeId_id_revision` ON `${TABLE_NAME}` (`bikeId`, `id`, `revision`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "OwnerOverride",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `baselineId` TEXT, `revision` INTEGER NOT NULL, `rule_action` TEXT NOT NULL, `rule_component` TEXT NOT NULL, `rule_sourceKind` TEXT NOT NULL, `rule_sourceIdentity` TEXT, `rule_edition` TEXT, `rule_locator` TEXT, `rule_baselineRevision` INTEGER, `rule_overrideRevision` INTEGER, `rule_scheduleKind` TEXT NOT NULL, `rule_intervalKm` INTEGER, `rule_intervalMonths` INTEGER, `rule_coverageNote` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`baselineId`) REFERENCES `Baseline`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baselineId",
+            "columnName": "baselineId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.action",
+            "columnName": "rule_action",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.component",
+            "columnName": "rule_component",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceKind",
+            "columnName": "rule_sourceKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceIdentity",
+            "columnName": "rule_sourceIdentity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.edition",
+            "columnName": "rule_edition",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.locator",
+            "columnName": "rule_locator",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.baselineRevision",
+            "columnName": "rule_baselineRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.overrideRevision",
+            "columnName": "rule_overrideRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.scheduleKind",
+            "columnName": "rule_scheduleKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.intervalKm",
+            "columnName": "rule_intervalKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.intervalMonths",
+            "columnName": "rule_intervalMonths",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.coverageNote",
+            "columnName": "rule_coverageNote",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_OwnerOverride_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_OwnerOverride_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_OwnerOverride_baselineId",
+            "unique": false,
+            "columnNames": [
+              "baselineId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_OwnerOverride_baselineId` ON `${TABLE_NAME}` (`baselineId`)"
+          },
+          {
+            "name": "index_OwnerOverride_bikeId_id_revision",
+            "unique": true,
+            "columnNames": [
+              "bikeId",
+              "id",
+              "revision"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_OwnerOverride_bikeId_id_revision` ON `${TABLE_NAME}` (`bikeId`, `id`, `revision`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "Baseline",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "baselineId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "OdometerReading",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `kilometers` INTEGER, `certainty` TEXT NOT NULL, `source` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, `originalNote` TEXT, `observed_epochMillis` INTEGER, `observed_zoneId` TEXT, `observed_offsetSeconds` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kilometers",
+            "columnName": "kilometers",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "certainty",
+            "columnName": "certainty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalNote",
+            "columnName": "originalNote",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "observed.epochMillis",
+            "columnName": "observed_epochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "observed.zoneId",
+            "columnName": "observed_zoneId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "observed.offsetSeconds",
+            "columnName": "observed_offsetSeconds",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_OdometerReading_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_OdometerReading_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "MaintenanceOccurrence",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `parentId` TEXT, `originalKm` INTEGER, `originalDate` TEXT, `effectiveKm` INTEGER, `effectiveDate` TEXT, `state` TEXT NOT NULL, `revision` INTEGER NOT NULL, `kind` TEXT NOT NULL, `changeReason` TEXT, `rule_action` TEXT NOT NULL, `rule_component` TEXT NOT NULL, `rule_sourceKind` TEXT NOT NULL, `rule_sourceIdentity` TEXT, `rule_edition` TEXT, `rule_locator` TEXT, `rule_baselineRevision` INTEGER, `rule_overrideRevision` INTEGER, `rule_scheduleKind` TEXT NOT NULL, `rule_intervalKm` INTEGER, `rule_intervalMonths` INTEGER, `rule_coverageNote` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`parentId`) REFERENCES `MaintenanceOccurrence`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentId",
+            "columnName": "parentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originalKm",
+            "columnName": "originalKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "originalDate",
+            "columnName": "originalDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "effectiveKm",
+            "columnName": "effectiveKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "effectiveDate",
+            "columnName": "effectiveDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changeReason",
+            "columnName": "changeReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.action",
+            "columnName": "rule_action",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.component",
+            "columnName": "rule_component",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceKind",
+            "columnName": "rule_sourceKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceIdentity",
+            "columnName": "rule_sourceIdentity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.edition",
+            "columnName": "rule_edition",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.locator",
+            "columnName": "rule_locator",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.baselineRevision",
+            "columnName": "rule_baselineRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.overrideRevision",
+            "columnName": "rule_overrideRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.scheduleKind",
+            "columnName": "rule_scheduleKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.intervalKm",
+            "columnName": "rule_intervalKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.intervalMonths",
+            "columnName": "rule_intervalMonths",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.coverageNote",
+            "columnName": "rule_coverageNote",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_MaintenanceOccurrence_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_MaintenanceOccurrence_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_MaintenanceOccurrence_parentId",
+            "unique": false,
+            "columnNames": [
+              "parentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_MaintenanceOccurrence_parentId` ON `${TABLE_NAME}` (`parentId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "MaintenanceOccurrence",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "parentId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "MaintenanceHistory",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `occurrenceId` TEXT, `originalKm` INTEGER, `originalDate` TEXT, `effectiveKm` INTEGER, `effectiveDate` TEXT, `performedDate` TEXT, `performedZone` TEXT, `odometerKm` INTEGER, `certainty` TEXT NOT NULL, `costBrl` TEXT, `location` TEXT, `description` TEXT NOT NULL, `performedWork` TEXT NOT NULL, `replacements` TEXT, `anchorEvidence` TEXT, `recordedAt` INTEGER NOT NULL, `kind` TEXT NOT NULL, `rule_action` TEXT NOT NULL, `rule_component` TEXT NOT NULL, `rule_sourceKind` TEXT NOT NULL, `rule_sourceIdentity` TEXT, `rule_edition` TEXT, `rule_locator` TEXT, `rule_baselineRevision` INTEGER, `rule_overrideRevision` INTEGER, `rule_scheduleKind` TEXT NOT NULL, `rule_intervalKm` INTEGER, `rule_intervalMonths` INTEGER, `rule_coverageNote` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`occurrenceId`) REFERENCES `MaintenanceOccurrence`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurrenceId",
+            "columnName": "occurrenceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originalKm",
+            "columnName": "originalKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "originalDate",
+            "columnName": "originalDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "effectiveKm",
+            "columnName": "effectiveKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "effectiveDate",
+            "columnName": "effectiveDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "performedDate",
+            "columnName": "performedDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "performedZone",
+            "columnName": "performedZone",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "odometerKm",
+            "columnName": "odometerKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "certainty",
+            "columnName": "certainty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "costBrl",
+            "columnName": "costBrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "location",
+            "columnName": "location",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "performedWork",
+            "columnName": "performedWork",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "replacements",
+            "columnName": "replacements",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "anchorEvidence",
+            "columnName": "anchorEvidence",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.action",
+            "columnName": "rule_action",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.component",
+            "columnName": "rule_component",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceKind",
+            "columnName": "rule_sourceKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.sourceIdentity",
+            "columnName": "rule_sourceIdentity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.edition",
+            "columnName": "rule_edition",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.locator",
+            "columnName": "rule_locator",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rule.baselineRevision",
+            "columnName": "rule_baselineRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.overrideRevision",
+            "columnName": "rule_overrideRevision",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.scheduleKind",
+            "columnName": "rule_scheduleKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rule.intervalKm",
+            "columnName": "rule_intervalKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.intervalMonths",
+            "columnName": "rule_intervalMonths",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rule.coverageNote",
+            "columnName": "rule_coverageNote",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_MaintenanceHistory_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_MaintenanceHistory_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_MaintenanceHistory_occurrenceId",
+            "unique": false,
+            "columnNames": [
+              "occurrenceId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_MaintenanceHistory_occurrenceId` ON `${TABLE_NAME}` (`occurrenceId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "MaintenanceOccurrence",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "occurrenceId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "HistoryAnnotation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `historyId` TEXT NOT NULL, `note` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`historyId`) REFERENCES `MaintenanceHistory`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "historyId",
+            "columnName": "historyId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_HistoryAnnotation_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HistoryAnnotation_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_HistoryAnnotation_historyId",
+            "unique": false,
+            "columnNames": [
+              "historyId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HistoryAnnotation_historyId` ON `${TABLE_NAME}` (`historyId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "MaintenanceHistory",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "historyId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "FuelEvent",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `readingId` TEXT, `mode` TEXT NOT NULL, `totalBrl` TEXT NOT NULL, `enteredQuantity` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, `observed_epochMillis` INTEGER NOT NULL, `observed_zoneId` TEXT NOT NULL, `observed_offsetSeconds` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`readingId`) REFERENCES `OdometerReading`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readingId",
+            "columnName": "readingId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mode",
+            "columnName": "mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalBrl",
+            "columnName": "totalBrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enteredQuantity",
+            "columnName": "enteredQuantity",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observed.epochMillis",
+            "columnName": "observed_epochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observed.zoneId",
+            "columnName": "observed_zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observed.offsetSeconds",
+            "columnName": "observed_offsetSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_FuelEvent_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FuelEvent_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_FuelEvent_readingId",
+            "unique": false,
+            "columnNames": [
+              "readingId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_FuelEvent_readingId` ON `${TABLE_NAME}` (`readingId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "OdometerReading",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "readingId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "RideSession",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `state` TEXT NOT NULL, `activeSlot` INTEGER, `ownership` TEXT NOT NULL, `algorithmVersion` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, `revision` INTEGER NOT NULL, `reducerState` TEXT, `started_epochMillis` INTEGER NOT NULL, `started_zoneId` TEXT NOT NULL, `started_offsetSeconds` INTEGER NOT NULL, `ended_epochMillis` INTEGER, `ended_zoneId` TEXT, `ended_offsetSeconds` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeSlot",
+            "columnName": "activeSlot",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "ownership",
+            "columnName": "ownership",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "algorithmVersion",
+            "columnName": "algorithmVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reducerState",
+            "columnName": "reducerState",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "started.epochMillis",
+            "columnName": "started_epochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "started.zoneId",
+            "columnName": "started_zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "started.offsetSeconds",
+            "columnName": "started_offsetSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ended.epochMillis",
+            "columnName": "ended_epochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "ended.zoneId",
+            "columnName": "ended_zoneId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ended.offsetSeconds",
+            "columnName": "ended_offsetSeconds",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_RideSession_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RideSession_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_RideSession_activeSlot",
+            "unique": true,
+            "columnNames": [
+              "activeSlot"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_RideSession_activeSlot` ON `${TABLE_NAME}` (`activeSlot`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "RideSample",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `rideId` TEXT NOT NULL, `sequence` INTEGER NOT NULL, `clockEpoch` TEXT NOT NULL, `elapsedMillis` INTEGER NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `accuracyMeters` REAL NOT NULL, `speedMps` REAL NOT NULL, `speedAccuracyMps` REAL NOT NULL, `speedEvent` INTEGER NOT NULL, `recordedAt` INTEGER NOT NULL, `observed_epochMillis` INTEGER NOT NULL, `observed_zoneId` TEXT NOT NULL, `observed_offsetSeconds` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`rideId`) REFERENCES `RideSession`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rideId",
+            "columnName": "rideId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sequence",
+            "columnName": "sequence",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clockEpoch",
+            "columnName": "clockEpoch",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elapsedMillis",
+            "columnName": "elapsedMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accuracyMeters",
+            "columnName": "accuracyMeters",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speedMps",
+            "columnName": "speedMps",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speedAccuracyMps",
+            "columnName": "speedAccuracyMps",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speedEvent",
+            "columnName": "speedEvent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observed.epochMillis",
+            "columnName": "observed_epochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observed.zoneId",
+            "columnName": "observed_zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observed.offsetSeconds",
+            "columnName": "observed_offsetSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_RideSample_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RideSample_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_RideSample_rideId",
+            "unique": false,
+            "columnNames": [
+              "rideId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RideSample_rideId` ON `${TABLE_NAME}` (`rideId`)"
+          },
+          {
+            "name": "index_RideSample_rideId_sequence",
+            "unique": true,
+            "columnNames": [
+              "rideId",
+              "sequence"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_RideSample_rideId_sequence` ON `${TABLE_NAME}` (`rideId`, `sequence`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "RideSession",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "rideId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "RideGap",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `rideId` TEXT NOT NULL, `reason` TEXT NOT NULL, `rejectedCount` INTEGER NOT NULL, `started_epochMillis` INTEGER NOT NULL, `started_zoneId` TEXT NOT NULL, `started_offsetSeconds` INTEGER NOT NULL, `ended_epochMillis` INTEGER, `ended_zoneId` TEXT, `ended_offsetSeconds` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`rideId`) REFERENCES `RideSession`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rideId",
+            "columnName": "rideId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rejectedCount",
+            "columnName": "rejectedCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "started.epochMillis",
+            "columnName": "started_epochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "started.zoneId",
+            "columnName": "started_zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "started.offsetSeconds",
+            "columnName": "started_offsetSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ended.epochMillis",
+            "columnName": "ended_epochMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "ended.zoneId",
+            "columnName": "ended_zoneId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ended.offsetSeconds",
+            "columnName": "ended_offsetSeconds",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_RideGap_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RideGap_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_RideGap_rideId",
+            "unique": false,
+            "columnNames": [
+              "rideId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_RideGap_rideId` ON `${TABLE_NAME}` (`rideId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "RideSession",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "rideId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "ImportRow",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `bikeId` TEXT NOT NULL, `importId` TEXT NOT NULL, `rowId` TEXT NOT NULL, `sourceNote` TEXT NOT NULL, `certainty` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`bikeId`) REFERENCES `Bike`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bikeId",
+            "columnName": "bikeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importId",
+            "columnName": "importId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceNote",
+            "columnName": "sourceNote",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "certainty",
+            "columnName": "certainty",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ImportRow_bikeId",
+            "unique": false,
+            "columnNames": [
+              "bikeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ImportRow_bikeId` ON `${TABLE_NAME}` (`bikeId`)"
+          },
+          {
+            "name": "index_ImportRow_importId_rowId",
+            "unique": true,
+            "columnNames": [
+              "importId",
+              "rowId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_ImportRow_importId_rowId` ON `${TABLE_NAME}` (`importId`, `rowId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Bike",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bikeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "AppliedOperation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fingerprint",
+            "columnName": "fingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "OccurrenceRevision",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `occurrenceId` TEXT NOT NULL, `revision` INTEGER NOT NULL, `state` TEXT NOT NULL, `effectiveKm` INTEGER, `effectiveDate` TEXT, `operationId` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, `changeReason` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`occurrenceId`) REFERENCES `MaintenanceOccurrence`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurrenceId",
+            "columnName": "occurrenceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "effectiveKm",
+            "columnName": "effectiveKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "effectiveDate",
+            "columnName": "effectiveDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "operationId",
+            "columnName": "operationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changeReason",
+            "columnName": "changeReason",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_OccurrenceRevision_occurrenceId",
+            "unique": false,
+            "columnNames": [
+              "occurrenceId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_OccurrenceRevision_occurrenceId` ON `${TABLE_NAME}` (`occurrenceId`)"
+          },
+          {
+            "name": "index_OccurrenceRevision_occurrenceId_revision",
+            "unique": true,
+            "columnNames": [
+              "occurrenceId",
+              "revision"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_OccurrenceRevision_occurrenceId_revision` ON `${TABLE_NAME}` (`occurrenceId`, `revision`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "MaintenanceOccurrence",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "occurrenceId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '14313e1dd1f907784ebc6ecfd14d8571')"
+    ]
+  }
+}

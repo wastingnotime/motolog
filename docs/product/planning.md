@@ -15,7 +15,9 @@ separately from owner choices. The [execution plan](execution-plan.md) maps the
 actual empty implementation surface to a required first bootstrap, one `:app`
 module, pinned tooling, internal packages, verification commands and device matrix.
 The direction gate is satisfied; no repeated authorization question is required.
-This planning change implements no features and dispatches no work.
+The initial Android shell and storage are now implemented; see the
+[local persistence contracts](local-persistence.md). Feature behavior remains
+bounded by this plan and the decision log.
 
 ## Resolved behavior and deferred inputs
 

@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">MotoLog</string>
+    <string name="foundation_message">Your motorcycle companion, available offline. Motorcycle setup and recording are coming next.</string>
+    <string name="loading_records">Opening your local records…</string>
+    <string name="records_unavailable">Your saved records could not be opened. Close and reopen MotoLog to retry.</string>
+</resources>
