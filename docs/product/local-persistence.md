@@ -141,3 +141,24 @@ separate-process offline restart. Reconciliation accepts an optional `AnchorChoi
 in the same transaction; TASK-16 should use it for qualifying completions, and
 compose multi-action outcomes in an enclosing Room transaction. The read model
 separates current recurrence from retained obligations requiring reconciliation.
+
+Corrective service uses the existing append-only history table and operation
+receipts, without a schema change. `recordCorrective` saves a standalone Custom
+snapshot with no occurrence, satisfaction or qualifying anchor links. Service date
+must be a valid local date no later than today, with its recorded zone; issue and
+performed work are required. Odometer, cost, location and replacements can remain
+unknown. BRL cost accepts zero and at most two decimal places/12 integral digits;
+unknown cost stays null and history displays known cost to two decimal places.
+An optional odometer is nonnegative whole km with at most 12 digits and cannot
+contradict strictly earlier/later confirmed services or owner observations.
+Date-only service readings have no invented intraday ordering and do not replace
+the current timestamped owner observation.
+
+The combined history sorts by performed local date descending, stable record ID
+for equal dates, and unknown dates last. It exposes the issue, performed work,
+kind, zone, odometer, cost, location, replacements and retained source/target
+snapshots without edit/delete controls. `CorrectiveServiceTest` covers all-kind
+ordering, unchanged history after template edits/postponement, missing/zero cost,
+rollback and concurrent receipt replay. It supports separate-process `phase=seed`
+and `phase=verify` restart checks. `CorrectiveServiceFlowTest` covers validation,
+form restoration, retry and read-only field visibility with synthetic data.

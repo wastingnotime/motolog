@@ -68,7 +68,10 @@ pending work. Open **Maintenance due and pending** from the checklist. Select a 
 to record full completion, full postponement or atomic
 partial completion with linked remaining work. Create/schedule ordinary programmed
 jobs there with date/km/both targets or explicitly unscheduled, and review read-only
-completed history. Recording and remaining V1 features follow in later slices.
+completed history. **New corrective service** records performed date/zone, issue,
+work, optional owner odometer, cost, location and replacements without completing
+pending checklist work. Completed history combines all maintenance kinds and shows
+missing values explicitly. Recording and remaining V1 features follow in later slices.
 
 ## License
 
