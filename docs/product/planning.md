@@ -4,8 +4,9 @@
 
 The inspected setup contains documentation, license and ignore rules. There are
 no Android modules, UI/data conventions, persistence or tracking implementations,
-or app tests to extend. No applicable manual has been verified here, and no
-maintenance intervals are seeded.
+or app tests to extend. The [manual review and partial rule inventory](../../references/fazer-ys250-blueflex-maintenance.md)
+verifies source identity and selected schedule facts. Exact applicability to the
+MotoLog bike remains pending, and no maintenance intervals are seeded.
 
 The [Android surface inventory](implementation-surfaces.md) records the inspected
 commit, actual files, greenfield slice map and a separate scaffold proposal.
@@ -21,8 +22,8 @@ an Android stack.
 
 | Area | Questions and proposals; not accepted defaults |
 | --- | --- |
-| Manual and registration | Verify Brazilian manual edition, exact model/year/market applicability, starting odometer, time anchor and prior-service baseline. Propose historical snapshots of completed rules and provenance. |
-| Maintenance recurrence | Decide actual-completion vs fixed-milestone vs manual-defined anchors, supported postponement targets, and interaction between outstanding work and later revisions. |
+| Manual and registration | Source edition/hash and selected facts are verified in the linked review. Confirm this bike's model/variant/BR specification and manufacture year separately from model year; establish starting odometer, time anchor and prior-service baseline independently. Propose historical snapshots of completed rules and provenance. |
+| Maintenance recurrence | Preserve the reviewed first-service marks, replayed odometer milestones, independent replacements and event/condition triggers. Decide actual-completion vs fixed-milestone anchors where the source leaves them unresolved, calendar origins, supported postponement targets, and interaction between outstanding work and later revisions. No universal 5,000-km recurrence or invented service anchors. |
 | Fuel and odometer | Confirm currency, locale, rounding, validation and backdating; propose preserving entered values and deriving the third fuel value. Decide how a fresh odometer reading is supplied and its age shown. Propose current minus last-refuel odometer only when chronologically valid. |
 | Active ride | Propose one persisted active ride shared by manual/automatic modes. Resolve speed-change threshold units, comparison baseline and configurability, GPS sampling/quality, automatic movement/idle criteria, manual override and interruption recovery. |
 | Daily statistics | Decide midnight session splitting vs daily aggregation and timezone. Propose valid distance divided by eligible tracked time; decide whether stopped time counts and handle zero duration explicitly. |

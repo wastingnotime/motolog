@@ -2,7 +2,9 @@
 
 The product docs preserve sanitized intent from the MotoLog V1 planning handoff
 of 2026-11-12. The original handoff and its private location are not published.
-This repository currently contains no verified manual-derived maintenance rules.
+The [Fazer YS250 BlueFlex review](fazer-ys250-blueflex-maintenance.md) records
+independently checked source facts and a partial inventory. Exact applicability
+to the MotoLog bike remains pending; no maintenance baseline is seeded.
 
 ## Maintenance source admission
 
@@ -17,7 +19,8 @@ Publish only an original factual maintenance summary, with nonpersonal metadata:
 Do not invent missing metadata, intervals or applicability. If evidence is
 insufficient, leave the value unseeded and document the gap. Preserve original
 baselines separately from owner overrides and identify owner changes as **Custom**.
-No baseline record or manual hash is asserted by this setup.
+The linked review records its source hash, verification limits and unseeded facts;
+it does not establish a completed-service baseline.
 
 ## Publication boundary
 
