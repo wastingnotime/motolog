@@ -19,12 +19,14 @@ import org.wastingnotime.motolog.data.local.*
 import org.wastingnotime.motolog.data.repository.*
 import org.wastingnotime.motolog.domain.maintenance.FazerInventory
 import org.wastingnotime.motolog.feature.maintenance.MaintenanceScreen
+import org.wastingnotime.motolog.feature.fuel.FuelScreen
 import org.wastingnotime.motolog.domain.model.*
 import java.time.OffsetDateTime
 import java.util.UUID
 
 @Composable
-fun RegistrationScreen(repository: RegistrationRepository, maintenance: MaintenanceRepository? = null) {
+fun RegistrationScreen(repository: RegistrationRepository, maintenance: MaintenanceRepository? = null,
+    fuel: FuelRepository? = null) {
     var snapshot by remember { mutableStateOf<WriteBatch?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -54,6 +56,10 @@ fun RegistrationScreen(repository: RegistrationRepository, maintenance: Maintena
         MaintenanceScreen(maintenance, saved.bikes.single().id, reading?.id) {
             screen = "home"; reload++
         }
+        return
+    }
+    if (screen == "fuel" && fuel != null && snapshot?.bikes?.isNotEmpty() == true) {
+        FuelScreen(fuel, snapshot!!.bikes.single().id) { screen = "home"; reload++ }
         return
     }
     MaterialTheme {
@@ -98,6 +104,8 @@ fun RegistrationScreen(repository: RegistrationRepository, maintenance: Maintena
                             Text(if (reading == null) "Owner odometer: unknown. Add a reading when available."
                                 else "Last confirmed owner reading: ${reading.kilometers} km\nObserved: ${java.time.Instant.ofEpochMilli(reading.observed!!.epochMillis)}\nHistorical readings are not automatically current.")
                             Text("Prior service: ${saved.histories.size} reviewed records. Missing history and anchors remain unknown.")
+                            if (fuel != null) Button(onClick = { screen = "fuel" },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text("Refuel and owner odometer") }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(enabled = !busy, onClick = { screen = "entry" }) { Text("Local setup entry") }
                                 OutlinedButton(enabled = !busy, onClick = { selected = null; screen = "edit" }) { Text("Add item") }
