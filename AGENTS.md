@@ -1,73 +1,55 @@
-# Repository Guidelines
+# MotoLog repository guidance
 
-This repository is a WNT-managed repository.
+## Identity and ownership
 
-## Repository Role
+MotoLog is WastingNoTime's Android-only, local-first personal motorcycle
+companion. This public repository owns its product requirements, domain rules,
+Android implementation when authorized, and original reference summaries.
+It is independent of Rastro. Read [README.md](README.md), then
+[the V1 product brief](docs/product/v1.md) and
+[the planning gate](docs/product/planning.md) before changing product behavior.
 
-- Own repository-specific product or domain truth.
-- Keep shared WNT guidance in user-space capabilities and the WNT MCP surface.
-- Keep durable repository decisions in Markdown.
-- Expose stable contracts before implementation details.
+## Boundaries
 
-## Non-Responsibilities
+- V1 serves one owner motorcycle, a Yamaha Fazer 250 in the 2016/2017 target
+  range. Exact model, market and manual applicability still require verification.
+- Do not add accounts, a backend dependency, cloud sync, multiple motorcycles,
+  workshop/marketplace workflows, rider profiles, a general motorcycle catalog,
+  iOS, web, or an MCP application.
+- Core registration, recording, history, tracking and dashboard calculations
+  must work offline. Owner-entered odometer readings and GPS measurements have
+  distinct authority; preserve their sources.
+- This setup does not authorize Android feature implementation. First inspect
+  the repository, prepare a repository-grounded plan, and obtain owner acceptance
+  and direction. Open decisions remain open until explicitly resolved.
 
-- Do not copy WNT toolkit policy into this repository.
-- Do not treat `wnt-tools` as this repository's source of truth.
-- Do not depend on repository-local WNT installs.
-- Do not make shared WNT guidance the responsibility of this repository.
+## Public and internal surfaces
 
-## Scope Boundaries
+- `docs/product/` is durable product and domain truth. Confirmed requirements
+  are stable intent; proposed defaults and implementation slices are planning.
+- `references/` holds only original factual summaries and nonpersonal source
+  identity, edition, page/table and hash metadata. Follow its publication rules.
+- No runtime, API, integration or data-format contract is exported yet. Add
+  `contracts/` only when an actual stable boundary needs documentation.
+- Future Android internals are not shared WNT contracts. Do not couple sibling
+  repositories to private implementation details.
+- WNT tasks own coordination, status and acceptance evidence. Keep technical
+  decisions here; record cross-repository ownership or blockers on their tasks.
 
-- Root `AGENTS.md` defines this repository's identity and visitor guidance.
-- `docs/` and `references/` may hold durable repository knowledge.
-- `contracts/` should hold public boundary semantics when the repo exports them.
-- `work/` may hold active change artifacts if the repository uses them.
-- Any WNT shared behavior should remain discoverable from user-space, not copied here.
+## Public-content rules
 
-## Working Rules
+Never commit personal vehicle files, identifiers, real owner records, credentials,
+private sibling artifacts, local absolute evidence paths, the owner's manual,
+or its screenshots, renders, extracts or copied text. Do not invent manual
+intervals or present unverified data as a maintenance baseline. Review the full
+staged diff and file list before a public push; ignore rules are only a guard.
+Use synthetic, nonpersonal examples if examples are needed.
 
-- Use `wnt capability show mcp-usage` when you need MCP guidance.
-- Use `wnt capability show project-surfaces` when you need project-surface defaults.
-- Use conventional commit prefixes for committed changes.
-- Keep repository-specific rules local to this repo.
+## Working conventions
 
-## Repository Binding
-
-- This repository was created with `wnt create-repository`.
-- WNT shared guidance lives outside the repository and is discovered from user-space.
-
-## WNT Repository Defaults
-
-Shared WNT guidance lives in user-space capabilities and the WNT MCP surface.
-
-- Use `wnt capability show mcp-usage` for MCP guidance.
-- Use `wnt capability show project-surfaces` for project-surface defaults.
-- Use `wnt create-repository <name>` when creating a new repository.
-- Keep WNT toolkit policy out of the repository-local source of truth.
-
-<!-- wnt:wnt-toolkit-hints:start -->
-## WNT Toolkit Hints
-
-Shared WNT knowledge is not repository truth. Resolve current WNT guidance from
-user or container space through WNT capabilities or the WNT MCP surface.
-
-```bash
-wnt capability list
-wnt capability show <capability-name>
-```
-
-Start with these capabilities when the task is about WNT repository behavior:
-
-```bash
-wnt capability show ai-assisted-repository-baseline
-wnt capability show project-surfaces
-wnt capability show change-discipline
-wnt capability show cross-repo-findings
-wnt capability show issue-pr-linking
-wnt capability show release-delivery-validation
-```
-
-This hint block is additive discovery guidance. It is not repository identity;
-root strategic docs and the rest of `AGENTS.md` remain owned by the consuming
-repository.
-<!-- wnt:wnt-toolkit-hints:end -->
+Use conventional commit prefixes. Keep repository-specific rules here and shared
+WNT toolkit guidance in user space. Resolve shared guidance with
+`wnt capability show <name>`; use `mcp-usage` or `project-surfaces` when relevant.
+This repository was resolved using `wnt create-repository`. Do not copy toolkit
+policy or install repository-local WNT tooling. Repository material is licensed
+under MPL-2.0; preserve [LICENSE](LICENSE) and applicable notices.
