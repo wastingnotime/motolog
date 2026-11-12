@@ -27,6 +27,7 @@ this Android-only setup.
 
 - [Product requirements and invariants](docs/product/v1.md)
 - [Open decisions, planning gate and verification slices](docs/product/planning.md)
+- [Inspected Android surfaces and separate bootstrap proposal](docs/product/implementation-surfaces.md)
 - [Source provenance and publication rules](references/README.md)
 - [Contributor and agent guidance](AGENTS.md)
 
