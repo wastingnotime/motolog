@@ -7,7 +7,8 @@ market and manual applicability must be verified before maintenance data is seed
 
 This repository currently contains product guidance and references policy only.
 There is no installable app, Android module, build or app test suite yet.
-App implementation requires an accepted repository-grounded plan and owner direction.
+Owner direction to proceed is recorded. The repository-grounded decisions and
+execution plan below resolve the planning gate; bootstrap starts separately.
 
 ## V1 scope
 
@@ -26,7 +27,9 @@ this Android-only setup.
 ## Read next
 
 - [Product requirements and invariants](docs/product/v1.md)
-- [Open decisions, planning gate and verification slices](docs/product/planning.md)
+- [Planning gate, scope limits and remaining inputs](docs/product/planning.md)
+- [Accepted decisions and implementation defaults](docs/product/decisions.md)
+- [Grounded execution map, tooling and verification](docs/product/execution-plan.md)
 - [Inspected Android surfaces and separate bootstrap proposal](docs/product/implementation-surfaces.md)
 - [Source provenance and publication rules](references/README.md)
 - [Reviewed manual facts, partial coverage and applicability gaps](references/fazer-ys250-blueflex-maintenance.md)
