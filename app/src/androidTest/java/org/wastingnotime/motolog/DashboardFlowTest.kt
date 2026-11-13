@@ -106,6 +106,9 @@ class DashboardFlowTest {
             compose.onAllNodes(hasTestTag("ride-state") and hasText("Recording", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
+        compose.onNodeWithText("Start ride").assertDoesNotExist()
+        compose.onNodeWithText("Not recording").assertDoesNotExist()
+        compose.onAllNodesWithText("Stop ride").onLast().performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(64.dp)
         compose.onNodeWithText("MotoLog · Your Fazer").performScrollTo()
         compose.onAllNodesWithText("Stop ride").onFirst().assertIsDisplayed().assertHeightIsAtLeast(56.dp)
         shot("v1-controls-recording")
