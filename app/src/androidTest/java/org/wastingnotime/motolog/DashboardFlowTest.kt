@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.*
 import org.junit.Assert.*
@@ -56,6 +57,11 @@ class DashboardFlowTest {
         val shift = java.util.concurrent.atomic.AtomicLong(0)
         compose.setContent { MotoLogScreen(registration, maintenance, fuel, app.rides) { System.currentTimeMillis() + shift.get() } }
         waitText("Quick refuel")
+        compose.onNodeWithText("Start ride").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(64.dp)
+        compose.onNodeWithText("Quick refuel").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(64.dp)
+        compose.onNodeWithText("Arm automatic mode").performScrollTo().assertIsDisplayed().assertHasClickAction()
+        compose.onNodeWithText("MotoLog · Your Fazer").performScrollTo()
+        shot("v1-controls-idle")
         compose.onNodeWithTag("dashboard-distance").performScrollTo().assertTextContains("Unavailable", substring = true)
         compose.onNodeWithTag("dashboard-average").performScrollTo().assertTextContains("Unavailable", substring = true)
         compose.onNodeWithTag("dashboard-fuel").performScrollTo().assertTextContains("No refuel recorded", substring = true)
@@ -94,6 +100,9 @@ class DashboardFlowTest {
         compose.onNodeWithTag("dashboard-average").assertTextEquals(String.format(java.util.Locale.US, "%.1f km/h", expected.averageKmh))
         click("Start ride"); waitText("Stop ride")
         val active = rides.status().first!!.id
+        compose.onNodeWithText("MotoLog · Your Fazer").performScrollTo()
+        compose.onAllNodesWithText("Stop ride").onFirst().assertIsDisplayed().assertHeightIsAtLeast(56.dp)
+        shot("v1-controls-recording")
         // Management remains available and never implicitly stops the ride.
         click("Ride history"); waitText("Ride history")
         compose.onNodeWithText("Parked management · read only").assertExists()
@@ -121,6 +130,11 @@ class DashboardFlowTest {
         compose.onAllNodesWithText("Stop ride").onFirst().performClick(); waitText("Start ride")
         click("Settings"); waitText("Automatic tracking: off"); click("Back to dashboard"); waitText("Quick refuel")
         click("Arm automatic mode"); waitText("Disarm automatic mode")
+        waitText("Automatic mode armed")
+        compose.onNodeWithText("Disarm").assertIsDisplayed().assertHasClickAction()
+        compose.onNodeWithText("Disarm automatic mode").performScrollTo().assertIsDisplayed().assertHasClickAction()
+        compose.onNodeWithText("MotoLog · Your Fazer").performScrollTo()
+        shot("v1-controls-armed")
         click("Settings"); waitText("Automatic tracking: armed")
         compose.onNodeWithText("Disarm").performClick(); waitText("Automatic tracking: off")
         assertNull(rides.automatic())

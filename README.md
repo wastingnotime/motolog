@@ -59,6 +59,8 @@ Select an app-owned device with `ANDROID_SERIAL` for connected checks. The initi
 verified target is API 35 x86_64; API 26/30/36 and physical-device checks remain
 in the plan's device matrix. Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 CI runs build/lint/unit checks; connected tests require a separate device.
+See the [V1 validation protocol](docs/product/validation.md) for clean synthetic
+test setup, process-restart probes, requirement coverage and owner field checks.
 
 See [storage contracts and migration policy](docs/product/local-persistence.md)
 for transaction/retry, precision, time, provenance and restart checks. See
