@@ -7,6 +7,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -128,13 +131,11 @@ fun FuelScreen(repository: FuelRepository, bikeId: String, initialScreen: String
 }
 
 @Composable
-private fun Field(label: String, value: String, busy: Boolean, change: (String) -> Unit) {
-    val focus = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
+private fun Field(label: String, value: String, busy: Boolean, done: () -> Unit, change: (String) -> Unit) {
     OutlinedTextField(value, change, enabled = !busy, label = { Text(label) }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = if (label.contains("odometer")) KeyboardType.Number else KeyboardType.Decimal,
             imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { focus.clearFocus(); keyboard?.hide() }),
+        keyboardActions = KeyboardActions(onDone = { done() }),
         modifier = Modifier.fillMaxWidth())
 }
 
@@ -143,6 +144,8 @@ private fun EntryForm(refuel: Boolean, busy: Boolean,
     save: (String, FuelMode, String, String, String, Observation) -> Unit) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    val reviewFocus = remember { FocusRequester() }
+    val done = { keyboard?.hide(); reviewFocus.requestFocus(); Unit }
     val id = rememberSaveable { UUID.randomUUID().toString() }
     var modeName by rememberSaveable { mutableStateOf(FuelMode.LITERS.name) }
     val mode = FuelMode.valueOf(modeName)
@@ -162,14 +165,14 @@ private fun EntryForm(refuel: Boolean, busy: Boolean,
             modeName = if (mode == FuelMode.LITERS) FuelMode.UNIT_PRICE.name else FuelMode.LITERS.name
             quantity = ""; reviewed = null; error = null
         }) { Text(if (mode == FuelMode.LITERS) "Enter price per liter instead" else "Enter liters instead") }
-        Field("Total paid BRL", total, busy) { total = it }
-        Field(if (mode == FuelMode.LITERS) "Liters" else "Price per liter BRL/L", quantity, busy) { quantity = it }
+        Field("Total paid BRL", total, busy, done) { total = it }
+        Field(if (mode == FuelMode.LITERS) "Liters" else "Price per liter BRL/L", quantity, busy, done) { quantity = it }
     }
-    Field("Recorded owner odometer km", km, busy) { km = it }
+    Field("Recorded owner odometer km", km, busy, done) { km = it }
     Text("Read the odometer from your motorcycle display.")
     ObservationInput(selectedTime, !busy) { selectedTime = it; reviewed = null }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("fuel-input-error")) }
-    Button(enabled = !busy, onClick = {
+    Button(enabled = !busy, modifier = Modifier.focusRequester(reviewFocus).focusProperties { canFocus = true }, onClick = {
         try {
             OwnerObservation.kilometers(km)
             val observed = selectedTime ?: System.currentTimeMillis()
