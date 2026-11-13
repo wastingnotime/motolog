@@ -51,7 +51,7 @@ internal class MaintenanceCommands(private val db: MotoLogDatabase) {
                     "Cost must be nonnegative BRL with up to 12 whole digits and two decimal places, or blank for unknown." }
                 DecimalValues.normalize(value, 2, false)
             }
-            val snapshot = store.snapshot()
+            val snapshot = store.snapshot(includeRideEvidence = false)
             require(snapshot.bikes.any { it.id == bikeId }) { "Register the motorcycle first." }
             details.odometerKm?.let { km ->
                 // Date-only services cannot be ordered within a day. Compare only strictly earlier/later days.
@@ -77,7 +77,7 @@ internal class MaintenanceCommands(private val db: MotoLogDatabase) {
             require(action.isNotBlank() && component.isNotBlank()) { "Enter the action and component." }
             require((target == null) == explicitlyUnscheduled) { "Enter a target or explicitly choose unscheduled." }
             target?.validate()
-            require(store.snapshot().bikes.any { it.id == bikeId })
+            require(store.snapshot(includeRideEvidence = false).bikes.any { it.id == bikeId })
             WriteBatch(occurrences = listOf(MaintenanceOccurrence("job:$operationId", bikeId, null,
                 RuleValues(action.trim(), component.trim(), SourceKind.CUSTOM, sourceIdentity = "Owner programmed job"),
                 target?.km, target?.date, target?.km, target?.date, kind = MaintenanceKind.PROGRAMMED)))
@@ -87,7 +87,7 @@ internal class MaintenanceCommands(private val db: MotoLogDatabase) {
     fun scheduleJob(operationId: String, selected: ObligationSelection, target: WorkTarget, now: Long): Boolean =
         store.command(operationId, listOf("initial-schedule", selected.id, selected.revision, target.fields()), now) {
             target.validate()
-            val snapshot = store.snapshot()
+            val snapshot = store.snapshot(includeRideEvidence = false)
             val row = selected(snapshot, selected)
             require(row.kind == MaintenanceKind.PROGRAMMED && row.effectiveKm == null && row.effectiveDate == null &&
                 row.state == OccurrenceState.PENDING && row.parentId == null) { "Only an unscheduled programmed job can receive its first target." }
@@ -104,7 +104,7 @@ internal class MaintenanceCommands(private val db: MotoLogDatabase) {
             command.remainingTarget?.fields(), command.reason, command.confirmDroppedThreshold, readingId)
         return store.command(operationId, fields, now) {
             require(selections.isNotEmpty() && selections.map { it.id }.distinct().size == selections.size) { "Choose a nonempty checklist without duplicate items." }
-            val snapshot = store.snapshot()
+            val snapshot = store.snapshot(includeRideEvidence = false)
             val rows = selections.map { selected(snapshot, it) }
             require(rows.map { it.bikeId }.distinct().size == 1) { "Checklist must belong to one motorcycle." }
             val performedIds = performed.flatMap { it.obligationIds }

@@ -45,7 +45,7 @@ class RegistrationFlowTest {
         enter("Interval months (optional)", "3")
         click("Save Custom item")
         waitFor("Custom · Inspect Synthetic accessory")
-        compose.onNodeWithText("Source: Owner").assertExists()
+        compose.onNodeWithText("Source: Custom · Owner").assertExists()
         assertEquals(3, repository.snapshot().baselines.single().rule.intervalMonths)
         assertTrue(repository.snapshot().histories.isEmpty())
     }
@@ -57,6 +57,7 @@ class RegistrationFlowTest {
         compose.onNodeWithText("Interval km (optional)").performScrollTo().performTextReplacement("12000")
         click("Save Custom item")
         waitFor("Custom · Replace External fuel filter")
+        compose.onNodeWithTag("source-${repository.snapshot().baselines.single { it.rule.component == "External fuel filter" }.id}").performScrollTo().performClick()
         compose.onNodeWithText("Original baseline: Replace External fuel filter", substring = true).assertExists()
         compose.onNodeWithText("Source: Owner override; original source retained", substring = true).assertExists()
         assertEquals(15_000L, repository.snapshot().baselines.single { it.rule.component == "External fuel filter" }.rule.intervalKm)

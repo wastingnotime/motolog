@@ -27,6 +27,13 @@ class DueEvaluationTest {
         assertEquals(DueStatus.UNSCHEDULED, status(DueTargets(), null, jan).status)
     }
 
+    @Test fun staleMileageCannotProveNotDueButRetainsReachedAndCalendarTargets() {
+        assertEquals(DueStatus.UNKNOWN, DueEvaluation.evaluate(DueTargets(km = 101), 100, jan, mileageFresh = false).status)
+        assertEquals(DueStatus.DUE, DueEvaluation.evaluate(DueTargets(km = 100), 100, jan, mileageFresh = false).status)
+        assertEquals(DueStatus.DUE, DueEvaluation.evaluate(DueTargets(km = 101, date = jan), 100, jan, mileageFresh = false).status)
+        assertEquals(DueStatus.NOT_DUE, DueEvaluation.evaluate(DueTargets(date = jan.plusDays(1)), null, jan, mileageFresh = false).status)
+    }
+
     @Test fun unknownBranchesNeverProveCurrentButKnownDueWins() {
         val unknownTime = DueTargets(km = 5_000, expectsDate = true)
         assertEquals(DueStatus.UNKNOWN, status(unknownTime, 4_999, jan).status)

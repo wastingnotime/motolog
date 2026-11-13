@@ -1,10 +1,10 @@
 # Manual ride recording and daily statistics
 
 Manual recording implements the [approved tracking defaults](decisions.md).
-Open **Manual ride recording** from the checklist while safely stopped. Start and
-Stop have at least 56 dp targets. Recording/gap/interrupted state and Stop remain
-visible in other app flows and in the location-service notification. Automatic
-mode remains off in this slice.
+Use the [dashboard](dashboard.md) ride controls while safely stopped. Start and
+Stop have at least 64 dp targets on the dashboard. Recording/gap/interrupted state
+and Stop remain visible in other app flows and in the location-service notification. Automatic
+mode remains off.
 
 ## Capture and recovery
 
@@ -83,8 +83,9 @@ The cursor references only the previous usable sample and last speed event.
 Capture uses primary-key/indexed active-slot lookups and touched-day projections;
 it never loads historical samples. Refresh queries only the selected day, twenty
 recent rides and twenty gaps, using supporting indexes. UI reads and all writes
-run off the main thread. Schema 4 adds these rows/indexes without rewriting
-existing evidence or receipts; raw quality evidence is append-only.
+run off the main thread. Schema 5 also persists versioned per-ride totals and
+pages ride history/details; see the dashboard query boundaries. Schema 4 added
+recording rows/indexes without rewriting existing evidence or receipts; raw quality evidence is append-only.
 
 ## Verification boundaries
 

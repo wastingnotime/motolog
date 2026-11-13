@@ -5,7 +5,9 @@ V1 helps one owner record fuel and service, track rides, and see what needs
 attention for one Yamaha Fazer 250 in the 2016/2017 target range. Exact model,
 market and manual applicability must be verified before maintenance data is seeded.
 
-The repository includes offline Android registration, sourced editable checklists,
+The repository includes an offline stopped-use dashboard, quick refuel, parked
+management navigation, paged ride details, Android registration, sourced editable
+checklists,
 reviewed local setup entry and atomic maintenance outcomes on transactional,
 app-private Room storage. Product features follow the accepted [execution plan](docs/product/execution-plan.md). No
 personal records are bundled; verified manual facts are admitted only after local
@@ -77,8 +79,8 @@ entry modes, read-only fuel history and timestamped owner readings. The
 kilometers since refuel only with fresh, chronologically suitable owner evidence.
 **Manual ride recording** opens large Start/Stop controls, explicit interruption
 recovery, GPS coverage and daily distance/average statistics. See the
-[manual recording model](docs/product/rides.md). Automatic tracking and remaining
-V1 features follow in later slices.
+[manual recording model](docs/product/rides.md). The
+[dashboard and parked management](docs/product/dashboard.md) provide the main navigation and short stopped-use refuel flow. Automatic tracking remains off.
 
 ## License
 

@@ -44,7 +44,7 @@ class MaintenanceTest {
         "bike", null, values, null, null, null, null, date, date?.let { "UTC" }, km, Certainty.CONFIRMED,
         null, null, "Synthetic performed action", "${values.action}: ${values.component}", null,
         "Explicit synthetic action and component evidence", now)
-    private fun due(readingId: String? = "initial", date: LocalDate = today) = repo.refresh("bike", readingId, date, now)
+    private fun due(readingId: String? = "initial", date: LocalDate = today) = repo.refresh("bike", readingId, date, maxOf(now, readingId?.let { id -> store.snapshot().readings.single { it.id == id }.observed!!.epochMillis } ?: now))
     private fun marks(name: String) = store.snapshot().obligations.filter { it.baselineId == key(name) && it.branch == "mileage" }
         .map { link -> store.snapshot().occurrences.single { it.id == link.occurrenceId } }.sortedBy { it.originalKm }
     private fun putReading(id: String, km: Long, time: Long = now) {

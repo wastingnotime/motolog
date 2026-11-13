@@ -11,9 +11,6 @@ import org.wastingnotime.motolog.data.local.*
 import org.wastingnotime.motolog.data.repository.*
 import org.wastingnotime.motolog.domain.model.*
 import org.wastingnotime.motolog.feature.registration.RegistrationScreen
-import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 class FuelFlowTest {
     @get:Rule val compose = createComposeRule()
@@ -22,10 +19,12 @@ class FuelFlowTest {
     private fun waitFor(text: String) {
         compose.waitUntil(10_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
     }
-    private fun observation(minutesAgo: Long) {
-        enter("Observed local timestamp", Instant.ofEpochMilli(System.currentTimeMillis() - minutesAgo * 60_000)
-            .atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-        enter("Observation zone", "UTC"); enter("UTC offset", "Z")
+    private fun observation(@Suppress("UNUSED_PARAMETER") minutesAgo: Long) {
+        compose.onNodeWithText("I observed this reading now").performScrollTo().assertExists()
+        click("Change observation time")
+        compose.onNodeWithText("Choose observation date").assertExists()
+        compose.onNodeWithText("Choose observation time").assertExists()
+        click("Change observation time")
     }
 
     @Test fun bothFormsReviewRestorationOdometerAndReadOnlyHistory() {
@@ -74,6 +73,7 @@ class FuelFlowTest {
             enter("Recorded owner odometer km", "120"); observation(1)
             click("Review owner reading"); click("Save owner reading")
             waitFor("New refuel")
+            waitFor("Kilometers since refuel: 10 km")
             compose.onNodeWithTag("fuel-distance").assertTextEquals("Kilometers since refuel: 10 km")
             compose.onNodeWithText("Last refuel odometer: 110 km").assertExists()
             click("Refuel history")

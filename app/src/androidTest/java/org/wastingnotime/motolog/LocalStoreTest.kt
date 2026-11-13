@@ -177,13 +177,13 @@ class LocalStoreTest {
     @Test fun unsupportedDatabaseVersionFailsWithoutDestructiveFallback() {
         bike(); db.close()
         val raw = context.openOrCreateDatabase(name, Context.MODE_PRIVATE, null)
-        raw.version = 5; raw.close()
+        raw.version = 6; raw.close()
         db = MotoLogDatabase.open(context, name)
         assertThrows(Exception::class.java) { db.openHelper.writableDatabase }
         db.close()
         val retained = context.openOrCreateDatabase(name, Context.MODE_PRIVATE, null)
         retained.rawQuery("SELECT id FROM Bike", null).use { assertTrue(it.moveToFirst()); assertEquals("bike", it.getString(0)) }
-        retained.version = 4; retained.close()
+        retained.version = 5; retained.close()
         db = MotoLogDatabase.open(context, name); store = LocalStore(db)
         assertEquals("bike", store.snapshot().bikes.single().id)
     }

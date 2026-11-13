@@ -18,6 +18,9 @@ import org.wastingnotime.motolog.data.repository.*
 import org.wastingnotime.motolog.domain.maintenance.*
 import java.time.LocalDate
 import java.util.UUID
+import kotlinx.coroutines.delay
+import org.wastingnotime.motolog.feature.common.observationText
+import org.wastingnotime.motolog.domain.fuel.FuelProjection
 
 /** Offline checklist selection, atomic outcomes and ordinary programmed work. */
 @Composable
@@ -33,6 +36,9 @@ fun MaintenanceScreen(repository: MaintenanceRepository, bikeId: String, reading
     var operationId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     var busy by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var ownerReading by remember { mutableStateOf<OdometerReading?>(null) }
+    LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(60_000) } }
     val scope = rememberCoroutineScope()
     fun command(action: () -> Unit) {
         busy = true; error = null
@@ -46,8 +52,9 @@ fun MaintenanceScreen(repository: MaintenanceRepository, bikeId: String, reading
             } finally { busy = false }
         }
     }
-    LaunchedEffect(bikeId, readingId, reload) {
+    LaunchedEffect(bikeId, readingId, reload, now / 60_000) {
         try {
+            ownerReading = withContext(Dispatchers.IO) { repository.ownerReading(readingId) }
             val applied = withContext(Dispatchers.IO) { repository.operationApplied(operationId) }
             if (applied) { screen = "pending"; chosen = arrayListOf(); notice = "Saved action recovered on this device." }
             view = withContext(Dispatchers.IO) {
@@ -76,7 +83,12 @@ fun MaintenanceScreen(repository: MaintenanceRepository, bikeId: String, reading
                     if (screen == "pending") back() else { screen = "pending"; error = null }
                 }) { Text(if (screen == "pending") "Back to checklist" else "Back to pending work") }
                 Text("Maintenance due and pending", style = MaterialTheme.typography.headlineSmall)
-                Text("Evaluated against the displayed last confirmed owner reading. Historical readings do not prove current mileage.")
+                Text("Owner odometer evidence")
+                ownerReading?.let { reading ->
+                    val age = reading.observed?.let { now - it.epochMillis }
+                    Text("${reading.kilometers} km · ${reading.observed?.let(::observationText) ?: "Observation time unknown"}\nAge: ${age?.let { "${it / 60_000} minutes" } ?: "unknown"} · ${if (age != null && age in 0..FuelProjection.FRESH_MILLIS) "fresh" else "current mileage unknown"}")
+                } ?: Text("Current mileage unknown · no confirmed owner reading")
+                Text("Readings older than 24 hours show historical evidence. Reached targets remain actionable; older below-target readings cannot show current not-due. GPS is never used as the owner odometer.")
                 error?.takeIf { screen != "corrective" }?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("maintenance-error")) }
                 notice?.let { Text(it) }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -154,7 +166,10 @@ fun MaintenanceScreen(repository: MaintenanceRepository, bikeId: String, reading
                                         if (readingId == null && rule.support in listOf(RuleSupport.OIL, RuleSupport.OIL_FILTER))
                                             Text("1,000 km first target · informational, unadopted until the first confirmed owner reading.")
                                         rule.item.effective.coverageNote?.let { Text(it) }
-                                        Text("Source: ${rule.item.source}", style = MaterialTheme.typography.bodySmall)
+                                        var sourceDetails by remember(rule.item.baseline.id) { mutableStateOf(false) }
+                                        Text("Source: ${rule.item.label} · ${rule.item.effective.locator ?: "Owner"}")
+                                        TextButton(onClick = { sourceDetails = !sourceDetails }) { Text("Source details") }
+                                        if (sourceDetails) Text(rule.item.source, style = MaterialTheme.typography.bodySmall)
                                         if (rule.pending.isEmpty()) Text("No adopted pending targets. Missing anchors and review needs remain visible above.")
                                         rule.pending.forEach { work ->
                                             MaintenanceChoice("Select ${work.occurrence.rule.component} target ${work.occurrence.originalKm ?: work.occurrence.originalDate ?: "unscheduled"}", work.occurrence.id in chosen, busy) {
