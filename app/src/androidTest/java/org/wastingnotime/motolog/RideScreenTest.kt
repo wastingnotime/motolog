@@ -32,7 +32,13 @@ class RideScreenTest {
         fun waitText(text: String) = compose.waitUntil(15_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
         fun click(text: String) { compose.onNodeWithText(text).performScrollTo().performClick() }
         try {
-            waitText("Start ride"); click("Start ride"); waitText("Stop ride")
+            waitText("Start ride")
+            compose.onNodeWithText("Automatic mode: off").assertExists()
+            click("Arm automatic mode"); waitText("Disarm automatic mode")
+            assertNotNull(repository.automatic()); assertNull(repository.status().first)
+            click("Disarm automatic mode"); waitText("Arm automatic mode")
+            assertNull(repository.automatic())
+            click("Start ride"); waitText("Stop ride")
             val id = repository.status().first!!.id
             assertEquals(RideState.ACTIVE, repository.status().first!!.state)
             context.stopService(Intent(context, RideCaptureService::class.java))

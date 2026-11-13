@@ -80,7 +80,7 @@ kilometers since refuel only with fresh, chronologically suitable owner evidence
 **Manual ride recording** opens large Start/Stop controls, explicit interruption
 recovery, GPS coverage and daily distance/average statistics. See the
 [manual recording model](docs/product/rides.md). The
-[dashboard and parked management](docs/product/dashboard.md) provide the main navigation and short stopped-use refuel flow. Automatic tracking remains off.
+[dashboard and parked management](docs/product/dashboard.md) provide the main navigation and short stopped-use refuel flow. Automatic tracking defaults off; explicitly Arm it from ride controls while safely stopped. See the [automatic lifecycle](docs/product/rides.md).
 
 ## License
 

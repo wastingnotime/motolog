@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     MaintenanceOccurrence::class, MaintenanceHistory::class, HistoryAnnotation::class,
     FuelEvent::class, RideSession::class, RideSample::class, RideGap::class,
     ImportRow::class, AppliedOperation::class, OccurrenceRevision::class, PreventiveObligation::class, QualifyingAnchor::class,
-    ObligationSatisfaction::class, RecordingCursor::class, QualityFix::class, RideDay::class, RideTotal::class], version = 5, exportSchema = true)
+    ObligationSatisfaction::class, RecordingCursor::class, QualityFix::class, RideDay::class, RideTotal::class, AutomaticState::class], version = 6, exportSchema = true)
 abstract class MotoLogDatabase : RoomDatabase() {
     internal abstract fun dao(): StoreDao
 
@@ -92,12 +92,18 @@ abstract class MotoLogDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS AutomaticState (slot INTEGER NOT NULL PRIMARY KEY, bike TEXT NOT NULL, epoch TEXT NOT NULL, minimumElapsed INTEGER NOT NULL, payload TEXT NOT NULL, idleSince INTEGER, version TEXT NOT NULL)")
+            }
+        }
+
         fun open(context: Context, name: String = "motolog.db"): MotoLogDatabase =
             builder(context, name).build()
 
         internal fun builder(context: Context, name: String): Builder<MotoLogDatabase> =
             Room.databaseBuilder(context.applicationContext, MotoLogDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) { installGuards(db) }
                 })

@@ -2,8 +2,9 @@
 
 The registered motorcycle opens on the offline dashboard. Large labeled Start,
 Stop and Quick refuel controls are for use only while safely stopped. Recording,
-GPS-gap and interrupted states use committed ride state. Automatic mode is shown
-as off; optional automatic detection is a separate feature. Motion-based lockout
+GPS-gap and interrupted states use committed ride state. Automatic mode defaults off; ride controls expose explicit Arm/Disarm and manual
+ownership takeover. Armed mode remains visible in parked flows and the notification;
+see the [automatic lifecycle](rides.md). Motion-based lockout
 is absent under the accepted V1 decision. Stop also stays available above parked
 screens and through the recording notification, independently of GPS fixes.
 

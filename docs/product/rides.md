@@ -1,10 +1,9 @@
-# Manual ride recording and daily statistics
+# Ride recording, optional automatic detection and daily statistics
 
-Manual recording implements the [approved tracking defaults](decisions.md).
+Recording implements the [approved tracking defaults](decisions.md).
 Use the [dashboard](dashboard.md) ride controls while safely stopped. Start and
 Stop have at least 64 dp targets on the dashboard. Recording/gap/interrupted state
-and Stop remain visible in other app flows and in the location-service notification. Automatic
-mode remains off.
+and Stop remain visible in other app flows and in the location-service notification. Automatic mode defaults off and requires an explicit foreground Arm action.
 
 ## Capture and recovery
 
@@ -42,6 +41,42 @@ raw rejected evidence. Retrying Stop preserves the original end, samples and tot
 A storage/capture failure stops capture and reports a possibly missing tail of up to five seconds under normal operation;
 committed evidence survives. The recorder does not promise survival of arbitrary
 storage stalls, power loss or OEM process restrictions.
+
+## Optional automatic mode
+
+Arm automatic mode while safely stopped, with precise location granted. A visible
+location service requests five-second GPS updates while waiting and one-second
+updates during a ride. Delivery remains best effort. The notification and parked
+status bar expose armed mode and Disarm even without an active ride. Monitoring
+uses battery; there is no exemption demand or hidden restart. Denied or approximate
+location leaves auto off, with an explanation and saved records still available.
+Manual recording uses the same precise-location prerequisite and remains available
+when automatic mode is off.
+
+A quality-approved sequence at >=6 km/h qualifies after at least 15 seconds and
+four fixes, with gaps <=6 seconds and plausible clock/geodesic pairs. A lower speed,
+rejected fix or continuity break resets it. Qualification creates one automatic-owned
+ride at the first buffered observation and commits all candidate samples and daily
+totals atomically. Five minutes continuously <=3 km/h ends only an automatic-owned
+ride, at the qualifying observation, including measured stopped time. Gaps <=10
+seconds are allowed for idle; missing GPS, invalid pairs and speed >3 km/h reset
+the idle window. Brief stops and stopped jitter cannot end a ride prematurely.
+
+Automatic stop leaves detection armed. Manual Stop ends either ownership and
+disarms. Take manual ownership retains the same ride ID and disarms detection;
+re-arming while a manual ride exists never lets idle detection end it. Disarm
+alone keeps an existing ride recording until explicit Stop. Resume after
+interruption takes manual ownership and leaves automatic mode off.
+
+Schema 6 adds a single bounded detection checkpoint. Candidate fixes and the
+idle anchor persist in the same transaction as ride samples, callback receipts
+and projections. Candidate capacity is 256 fixes; an excessive burst resets the
+window safely. Every fix commits immediately. The detection version is retained
+in an automatic ride's reserved reducer-state field, independently of the GPS
+metrics algorithm version. Process initialization and service/permission loss
+discard armed state and unqualified candidates; existing rides become interrupted.
+There is no candidate replay across process downtime, boot or force-stop.
+No idle time is inferred from that downtime.
 
 ## Evidence and totals
 
@@ -94,8 +129,8 @@ missing/non-increasing fixes, clock changes, stopped jitter, midnight, zone chan
 and DST. Room tests cover concurrent starts, receipt replay, interruption/resume,
 zero-duration rides, weighted totals, migration and a two-hour one-second trace
 with indexed-query assertions. Separate process probes check durable recovery.
-A platform-GPS test injects synthetic native locations into the real service,
-checks foreground/background capture, missing-fix recovery and notification Stop.
+Platform-GPS tests inject synthetic native locations into the real service,
+check foreground/background capture, missing-fix recovery, native automatic start, a real five-minute measured idle stop and notification Stop/Disarm.
 
 API 35 emulator results do not establish physical GNSS native speed/accuracy
 availability, OEM/custom-ROM process behavior, battery use or touch usability.

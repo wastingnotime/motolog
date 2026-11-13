@@ -96,4 +96,54 @@ class RideCaptureDeviceTest {
             shell("appops set $packageName android:mock_location default")
         }
     }
+    @Test fun automaticBackgroundStartMeasuredIdleStopAndNotificationDisarm() {
+        val packageName = context.packageName
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.POST_NOTIFICATIONS).forEach { shell("pm grant $packageName $it") }
+        shell("appops set $packageName android:mock_location allow")
+        val manager = context.getSystemService(LocationManager::class.java)
+        val bike = bike()
+        app.rides.repository.status().first?.let { app.rides.repository.stop(it.id, observationAt(System.currentTimeMillis()), true) }
+        app.rides.repository.disarm()
+        @Suppress("DEPRECATION")
+        manager.addTestProvider(LocationManager.GPS_PROVIDER, false, true, false, false, true, true, true, 1, 1)
+        manager.setTestProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        fun emit(speedKmh: Float) {
+            manager.setTestProviderLocation(LocationManager.GPS_PROVIDER, Location(LocationManager.GPS_PROVIDER).apply {
+                latitude = 0.0; longitude = 0.0; accuracy = 5f; speed = speedKmh / 3.6f; speedAccuracyMetersPerSecond = 1f
+                time = System.currentTimeMillis(); elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+            })
+        }
+        try {
+            scenario.onActivity { it.startService(Intent(it, RideCaptureService::class.java)
+                .setAction(RideCaptureService.ARM).putExtra("bike", bike)) }
+            waitFor { app.rides.running && app.rides.repository.automatic() != null }
+            assertNull(app.rides.repository.status().first)
+            assertTrue(context.getSystemService(NotificationManager::class.java).activeNotifications.single { it.id == 1 }
+                .notification.actions.single().title.toString().contains("Disarm"))
+            shell("input keyevent KEYCODE_HOME")
+            repeat(5) { emit(6.1f); Thread.sleep(5_100) }
+            waitFor { app.rides.repository.status().first?.ownership == RideOwnership.AUTOMATIC }
+            val ride = app.rides.repository.status().first!!
+            assertEquals(AutomaticDetection.VERSION, ride.reducerState)
+            val idleStart = SystemClock.elapsedRealtime()
+            do {
+                emit(0f); Thread.sleep(5_100)
+                if (SystemClock.elapsedRealtime() - idleStart < 299_000)
+                    assertEquals(ride.id, app.rides.repository.status().first?.id)
+            } while (SystemClock.elapsedRealtime() - idleStart < 307_000)
+            waitFor { app.rides.repository.status().first == null }
+            assertNotNull(app.rides.repository.automatic())
+            assertTrue(app.rides.repository.detail(ride.id).total!!.eligibleMillis >= 315_000)
+            val notification = context.getSystemService(NotificationManager::class.java).activeNotifications.single { it.id == 1 }
+            notification.notification.actions.single().actionIntent.send()
+            waitFor { app.rides.repository.automatic() == null && !app.rides.running }
+        } finally {
+            context.stopService(Intent(context, RideCaptureService::class.java)); scenario.close()
+            manager.removeTestProvider(LocationManager.GPS_PROVIDER)
+            shell("appops set $packageName android:mock_location default")
+        }
+    }
+
 }

@@ -46,6 +46,8 @@ class RideCaptureService : Service(), LocationListener {
     private var generation = 0
     private var capturing = false
     private var currentRide: String? = null
+    private var cadence = 0L
+    private var automaticArmed = false
     private val pulse = object : Runnable {
         override fun run() {
             if (!capturing) return
@@ -61,17 +63,21 @@ class RideCaptureService : Service(), LocationListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val commandGeneration = ++generation
-        if (intent?.action == STOP) {
-            val id = intent.getStringExtra("ride") ?: currentRide
-            if (currentRide != null && id != currentRide) return START_NOT_STICKY
-            stopCapture()
+        if (intent?.action == DISARM || intent?.action == STOP) {
             runtime.execute({
-                if (id != null) runtime.repository.stop(id, observationAt(System.currentTimeMillis()))
-                main.post { if (generation == commandGeneration) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelfResult(startId) } }
+                if (intent.action == DISARM) runtime.repository.disarm()
+                else {
+                    val active = runtime.repository.status().first
+                    val requested = intent.getStringExtra("ride")
+                    if (active == null) runtime.repository.disarm()
+                    else if (requested == null || requested == active.id)
+                        runtime.repository.stop(active.id, observationAt(System.currentTimeMillis()))
+                }
+                publish(commandGeneration)
             }, ::failed)
             return START_NOT_STICKY
         }
-        if (intent?.action != START && intent?.action != RESUME) { stopSelf(); return START_NOT_STICKY }
+        if (intent?.action != START && intent?.action != RESUME && intent?.action != ARM) { stopSelf(); return START_NOT_STICKY }
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             runtime.error.value = "Precise location is required. Saved records remain available."
             interrupt("PERMISSION_DENIED"); return START_NOT_STICKY
@@ -79,8 +85,8 @@ class RideCaptureService : Service(), LocationListener {
         try {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
                 NotificationChannel(CHANNEL, "Ride recording", NotificationManager.IMPORTANCE_LOW))
-            if (Build.VERSION.SDK_INT >= 29) startForeground(1, notification(null), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
-            else startForeground(1, notification(null))
+            if (Build.VERSION.SDK_INT >= 29) startForeground(1, notification(null, pending = true), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+            else startForeground(1, notification(null, pending = true))
         } catch (_: RuntimeException) {
             runtime.error.value = "Could not start location recording. Open MotoLog while stopped and try again."
             interrupt("SERVICE_START_FAILED"); return START_NOT_STICKY
@@ -91,29 +97,27 @@ class RideCaptureService : Service(), LocationListener {
         val operation = intent.getStringExtra("operation") ?: UUID.randomUUID().toString()
         val bike = intent.getStringExtra("bike") ?: ""
         runtime.execute({
-            val id = if (intent.action == RESUME) {
+            if (intent.action == ARM) {
+                runtime.repository.arm(bike, runtime.epoch, minimumElapsed)
+            } else if (intent.action == RESUME) {
                 requireNotNull(rideId)
-                runtime.repository.resume(rideId, at, runtime.epoch, minimumElapsed); rideId
+                runtime.repository.resume(rideId, at, runtime.epoch, minimumElapsed)
             } else {
                 val saved = runtime.repository.start(operation, bike, at, runtime.epoch, minimumElapsed)
                 if (saved.state != org.wastingnotime.motolog.domain.model.RideState.ACTIVE) {
                     main.post { if (!capturing && generation == commandGeneration) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelfResult(startId) } }
                     return@execute
                 }
-                saved.id
             }
-            main.post {
-                if (generation != commandGeneration) return@post
-                currentRide = id
-                getSystemService(NotificationManager::class.java).notify(1, notification(id))
-                beginCapture()
-            }
+            publish(commandGeneration)
         }, ::failed)
         return START_NOT_STICKY // Explicit foreground recovery, no hidden restart/boot start.
     }
 
-    private fun beginCapture() {
-        if (capturing) return
+    private fun beginCapture(interval: Long = 1_000L) {
+        if (capturing && cadence == interval) return
+        if (capturing) stopCapture()
+        cadence = interval
         try {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 interrupt("PERMISSION_REVOKED"); return
@@ -121,7 +125,7 @@ class RideCaptureService : Service(), LocationListener {
             if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 interrupt("GPS_DISABLED"); return
             }
-            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1_000L, 0f, this, Looper.getMainLooper())
+            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, interval, 0f, this, Looper.getMainLooper())
             capturing = true; runtime.running = true; runtime.error.value = null
             main.post(pulse)
         } catch (_: SecurityException) { interrupt("PERMISSION_REVOKED") }
@@ -135,7 +139,24 @@ class RideCaptureService : Service(), LocationListener {
             if (location.hasSpeed()) location.speed.toDouble() else null,
             if (location.hasSpeedAccuracy()) location.speedAccuracyMetersPerSecond.toDouble() else null)
         val id = UUID.randomUUID().toString()
-        runtime.execute({ runtime.repository.accept(id, fix) }, ::failed)
+        val callbackGeneration = generation
+        runtime.execute({ runtime.repository.capture(id, fix); publish(callbackGeneration) }, ::failed)
+    }
+
+    /** Commands and fixes publish the committed snapshot; stale UI work cannot undo a newer command. */
+    private fun publish(expected: Int) {
+        val ride = runtime.repository.status().first
+        val armed = runtime.repository.automatic() != null
+        main.post {
+            if (generation != expected) return@post
+            currentRide = ride?.id
+            automaticArmed = armed
+            if ((ride == null && !armed) || ride?.state == org.wastingnotime.motolog.domain.model.RideState.INTERRUPTED) { stopCapture(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
+            else {
+                getSystemService(NotificationManager::class.java).notify(1, notification(currentRide))
+                beginCapture(if (ride == null) 5_000L else 1_000L)
+            }
+        }
     }
     override fun onProviderDisabled(provider: String) { if (provider == LocationManager.GPS_PROVIDER) interrupt("GPS_DISABLED") }
     override fun onProviderEnabled(provider: String) = Unit
@@ -143,34 +164,37 @@ class RideCaptureService : Service(), LocationListener {
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
 
     private fun interrupt(reason: String) {
+        generation++
         stopCapture()
         runtime.execute({ runtime.repository.interrupt(reason, observationAt(System.currentTimeMillis()))
             main.post { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
         }, ::failed)
     }
-    private fun failed() { main.post { stopCapture(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() } }
+    private fun failed() { main.post { generation++; stopCapture(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() } }
     private fun stopCapture() {
         capturing = false; runtime.running = false; main.removeCallbacks(pulse)
         manager.removeUpdates(this)
     }
     override fun onDestroy() {
+        generation++
         stopCapture()
         runtime.execute { runtime.repository.interrupt("SERVICE_INTERRUPTED", observationAt(System.currentTimeMillis())) }
         super.onDestroy()
     }
-    private fun notification(id: String?): Notification {
+    private fun notification(id: String?, pending: Boolean = false): Notification {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val builder = Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_motolog)
-            .setContentTitle("MotoLog ride recording").setContentText("GPS estimate · gaps excluded · tap to open")
+            .setContentTitle(if (pending) "MotoLog preparing location" else if (id == null) "MotoLog automatic mode armed" else "MotoLog ride recording")
+            .setContentText(if (pending) "Checking saved state…" else "Automatic mode: ${if (automaticArmed) "armed" else "off"} · GPS estimate · gaps excluded")
             .setContentIntent(open).setOngoing(true).setCategory(Notification.CATEGORY_SERVICE)
-        if (id != null) {
-            val stop = PendingIntent.getService(this, 1, Intent(this, RideCaptureService::class.java).setAction(STOP).putExtra("ride", id),
+        val stop = PendingIntent.getService(this, 1, Intent(this, RideCaptureService::class.java).setAction(STOP).putExtra("ride", id),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-            builder.addAction(Notification.Action.Builder(null, "Stop ride", stop).build())
-        }
+        builder.addAction(Notification.Action.Builder(null, if (id == null) "Disarm automatic mode" else "Stop ride", stop).build())
         return builder.build()
     }
     companion object {
+        const val ARM = "motolog.ARM_AUTOMATIC"
+        const val DISARM = "motolog.DISARM_AUTOMATIC"
         const val START = "motolog.START_MANUAL"
         const val RESUME = "motolog.RESUME_MANUAL"
         const val STOP = "motolog.STOP_MANUAL"
