@@ -100,6 +100,12 @@ class DashboardFlowTest {
         compose.onNodeWithTag("dashboard-average").assertTextEquals(String.format(java.util.Locale.US, "%.1f km/h", expected.averageKmh))
         click("Start ride"); waitText("Stop ride")
         val active = rides.status().first!!.id
+        // The pinned status bar and embedded controls refresh independently.
+        // Capture their settled state rather than the first header update.
+        compose.waitUntil(15_000) {
+            compose.onAllNodes(hasTestTag("ride-state") and hasText("Recording", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("MotoLog · Your Fazer").performScrollTo()
         compose.onAllNodesWithText("Stop ride").onFirst().assertIsDisplayed().assertHeightIsAtLeast(56.dp)
         shot("v1-controls-recording")
