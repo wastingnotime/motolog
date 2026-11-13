@@ -17,7 +17,9 @@ confirmed `OWNER` odometer observation:
 
 The existing schema stores the normalized exact operands and mode. Changing
 mode clears its quantity and requires review. Every form edit invalidates the
-reviewed values until reviewed again. The read-only history distinguishes total
+reviewed values until reviewed again. Numeric-field Done hides the keyboard and
+moves focus to the existing Review button; it never invokes Review or saves.
+The read-only history distinguishes total
 paid from price per liter, shows the recorded motorcycle odometer and observation,
 and exposes the exact normalized operands, mode, receipt timestamp and derivation.
 

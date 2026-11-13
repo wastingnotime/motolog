@@ -22,6 +22,7 @@ class FuelFlowTest {
         // A focused field can otherwise reclaim the viewport during IME layout.
         field.performImeAction()
         field.assertIsNotFocused()
+        compose.onNode(hasText("Review refuel") or hasText("Review owner reading")).assertIsFocused()
     }
     private fun waitFor(text: String) {
         compose.waitUntil(10_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
@@ -50,7 +51,11 @@ class FuelFlowTest {
             waitFor("New refuel")
             compose.onNodeWithTag("fuel-distance").assertTextContains("unavailable", substring = true)
             click("New refuel")
-            enter("Total paid BRL", "100.001"); enter("Liters", "20.000")
+            enter("Total paid BRL", "100.001")
+            // Done moves focus only; even invalid input is reviewed only by a tap.
+            compose.onNodeWithTag("fuel-input-error").assertDoesNotExist()
+            compose.onNodeWithText("Save refuel").assertDoesNotExist()
+            enter("Liters", "20.000")
             enter("Recorded owner odometer km", "100"); observation(10)
             click("Review refuel")
             compose.onNodeWithTag("fuel-input-error").assertTextContains("Total paid must be positive", substring = true)

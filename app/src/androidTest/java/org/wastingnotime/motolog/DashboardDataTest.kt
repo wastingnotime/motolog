@@ -17,7 +17,9 @@ class DashboardDataTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val name = "dashboard-data.db"
     private lateinit var db: MotoLogDatabase
-    private val queries = mutableListOf<String>()
+    // Room callbacks also arrive from the app runtime's recovery IO lane. A plain
+    // ArrayList can race the query-plan assertion even with a direct executor.
+    private val queries = java.util.concurrent.ConcurrentLinkedQueue<String>()
     private val now = Instant.parse("2026-01-15T12:00:00Z").toEpochMilli()
     private val today = LocalDate.of(2026, 1, 15)
     @Before fun setup() {

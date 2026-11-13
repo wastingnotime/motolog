@@ -225,7 +225,10 @@ class RideRepositoryTest {
         fun plan(sql: String) = db.openHelper.readableDatabase.query("EXPLAIN QUERY PLAN $sql").use { cursor ->
             buildList { while (cursor.moveToNext()) add(cursor.getString(3)) }.joinToString()
         }
-        assertTrue(plan("SELECT * FROM RideDay WHERE bikeId = 'bike' AND date = '2026-01-02'").contains("SEARCH RideDay"))
+        val dayPlan = plan("SELECT * FROM RideDay WHERE bikeId = 'bike' AND date = '2026-01-02'")
+        // Older Android SQLite prints SEARCH TABLE; newer versions omit TABLE.
+        assertTrue(dayPlan, dayPlan.contains("SEARCH") && dayPlan.contains("RideDay") &&
+            dayPlan.contains("USING INDEX sqlite_autoindex_RideDay_1"))
         assertTrue(plan("SELECT * FROM RideSession WHERE activeSlot = 1 LIMIT 1").contains("USING INDEX index_RideSession_activeSlot"))
     }
 }
