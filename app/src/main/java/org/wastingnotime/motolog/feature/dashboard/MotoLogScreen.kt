@@ -32,6 +32,7 @@ import java.util.Locale
 @Composable
 fun MotoLogScreen(registration: RegistrationRepository, maintenance: MaintenanceRepository,
     fuel: FuelRepository, runtime: RideRuntime, clock: () -> Long = System::currentTimeMillis) {
+    var armed by remember { mutableStateOf(false) }
     var route by rememberSaveable { mutableStateOf("dashboard") }
     var saved by remember { mutableStateOf<WriteBatch?>(null) }
     var ride by remember { mutableStateOf<RideRepository.View?>(null) }
@@ -54,6 +55,13 @@ fun MotoLogScreen(registration: RegistrationRepository, maintenance: Maintenance
             } catch (_: Exception) { error = "Local records unavailable. Saved records are retained. Reopen to try again." }
             if (route != "dashboard") break
             delay(5_000)
+        }
+    }
+    LaunchedEffect(route) {
+        if (route == "settings") while (isActive) {
+            try { armed = withContext(Dispatchers.IO) { runtime.repository.automatic() != null } }
+            catch (_: Exception) { error = "Automatic mode unavailable. Reopen to reload saved state." }
+            delay(1_000)
         }
     }
     val bike = saved?.bikes?.singleOrNull()
@@ -89,8 +97,8 @@ fun MotoLogScreen(registration: RegistrationRepository, maintenance: Maintenance
                             TextButton(onClick = home) { Text("Back to dashboard") }
                             Text("Settings", style = MaterialTheme.typography.headlineMedium)
                             Text("Parked management")
-                            Text("Automatic tracking: off", style = MaterialTheme.typography.titleLarge)
-                            Text("Start and stop rides manually. Location permission is requested when you start recording.")
+                            Text(if (armed) "Automatic tracking: armed" else "Automatic tracking: off", style = MaterialTheme.typography.titleLarge)
+                            Text("Use dashboard ride controls to arm optional automatic tracking or record manually. Precise location is required. Monitoring uses battery and must be re-armed after interruption.")
                             Text("Display: English (US) · km · liters · km/h · BRL")
                             Text("Records are stored on this device and work offline.")
                             OutlinedButton(onClick = { route = "registration" }) { Text("Motorcycle and checklist") }

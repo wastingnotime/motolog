@@ -120,6 +120,11 @@ class DashboardFlowTest {
         assertEquals(next, rides.status().first!!.id)
         compose.onAllNodesWithText("Stop ride").onFirst().performClick(); waitText("Start ride")
         click("Settings"); waitText("Automatic tracking: off"); click("Back to dashboard"); waitText("Quick refuel")
+        click("Arm automatic mode"); waitText("Disarm automatic mode")
+        click("Settings"); waitText("Automatic tracking: armed")
+        compose.onNodeWithText("Disarm").performClick(); waitText("Automatic tracking: off")
+        assertNull(rides.automatic())
+        click("Back to dashboard"); waitText("Quick refuel")
         // Freshness and fuel result change from owner evidence only, even with GPS totals present.
         assertEquals(1, fuel.snapshot().readings.size)
         compose.onNodeWithText("MotoLog · Your Fazer").performScrollTo()

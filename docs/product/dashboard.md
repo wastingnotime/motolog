@@ -13,7 +13,9 @@ Enlarged text uses a single scrolling column with no fixed text heights. Quick
 actions retain 64 dp minimum targets and matching typography. System-bar icon
 appearance follows the actual app surface brightness.
 
-Quick refuel opens directly into the two existing fuel modes. Enter total paid,
+Quick refuel opens directly into the two existing fuel modes. Numeric fields expose
+a keyboard Done action that releases focus; the form reserves keyboard space so
+Review and Save can be scrolled into the visible area. Enter total paid,
 liters or unit price, and the motorcycle's owner odometer; review and save returns
 to the dashboard. Observed-now is the default, frozen at review so a retry uses the
 same observation and operation identity. Optional native date/time pickers support
