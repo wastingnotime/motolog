@@ -28,6 +28,7 @@ fun RideScreen(runtime: RideRuntime, bike: String, embedded: Boolean = false, ba
     val context = LocalContext.current
     var view by remember { mutableStateOf<RideRepository.View?>(null) }
     var localError by remember { mutableStateOf<String?>(null) }
+    var armed by remember { mutableStateOf(false) }
     var fine by remember { mutableStateOf(false) }
     var notifications by remember { mutableStateOf(false) }
     val error by runtime.error.collectAsState()
@@ -40,12 +41,15 @@ fun RideScreen(runtime: RideRuntime, bike: String, embedded: Boolean = false, ba
         while (isActive) {
             fine = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
             notifications = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            try { view = withContext(Dispatchers.IO) { runtime.repository.view(bike, LocalDate.now().toString()) } }
+            try {
+                view = withContext(Dispatchers.IO) { runtime.repository.view(bike, LocalDate.now().toString()) }
+                armed = withContext(Dispatchers.IO) { runtime.repository.automatic() != null }
+            }
             catch (_: Exception) { localError = "Local records unavailable. Reopen to recover committed records." }
             delay(1_000)
         }
     }
-    fun start(resume: String? = null) {
+    fun start(resume: String? = null, auto: Boolean = false) {
         localError = null
         if (!fine) {
             permissions.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION) +
@@ -56,7 +60,7 @@ fun RideScreen(runtime: RideRuntime, bike: String, embedded: Boolean = false, ba
         // A revoked permission between these checks must not leave a pending FGS-start deadline.
         try {
             context.startService(Intent(context, RideCaptureService::class.java)
-                .setAction(if (resume == null) RideCaptureService.START else RideCaptureService.RESUME)
+                .setAction(if (auto) RideCaptureService.ARM else if (resume == null) RideCaptureService.START else RideCaptureService.RESUME)
                 .putExtra("bike", bike).putExtra("operation", UUID.randomUUID().toString()).putExtra("ride", resume))
         } catch (_: RuntimeException) { localError = "Recording could not start. Keep MotoLog visible and check location permission." }
     }
@@ -66,10 +70,16 @@ fun RideScreen(runtime: RideRuntime, bike: String, embedded: Boolean = false, ba
             Column(layout,
                 verticalArrangement = Arrangement.spacedBy(if (embedded) 8.dp else 12.dp)) {
                 if (!embedded) {
-                    Text("Manual ride", style = MaterialTheme.typography.headlineSmall)
+                    Text("Ride controls", style = MaterialTheme.typography.headlineSmall)
                     Text("Use controls only while safely stopped.")
                 }
-                Text("Automatic mode: off", style = MaterialTheme.typography.bodySmall)
+                Text(if (armed) "Automatic mode: armed · visible location service" else "Automatic mode: off", style = MaterialTheme.typography.bodySmall)
+                if (embedded && !armed) Text("Optional movement detection uses GPS and battery while armed.", style = MaterialTheme.typography.bodySmall)
+                if (!embedded) Text("Opt in while stopped: movement ≥6 km/h for 15 seconds starts a ride; five minutes ≤3 km/h ends automatic rides. GPS gaps reset detection. Monitoring uses battery and ends on interruption; re-arm explicitly. No battery exemption required.")
+                if (armed) OutlinedButton(onClick = {
+                    context.startService(Intent(context, RideCaptureService::class.java).setAction(RideCaptureService.DISARM))
+                }) { Text("Disarm automatic mode") }
+                else OutlinedButton(onClick = { start(auto = true) }, enabled = view != null && view?.active?.state != RideState.INTERRUPTED) { Text("Arm automatic mode") }
                 val active = view?.active
                 Text(when (active?.state) {
                     RideState.ACTIVE -> if (view?.cursor?.gap != null) "Recording · GPS gap / waiting for usable fix" else "Recording · GPS estimate"
@@ -88,9 +98,13 @@ fun RideScreen(runtime: RideRuntime, bike: String, embedded: Boolean = false, ba
                     Button(onClick = { start(active.id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) { Text("Resume same ride") }
                     OutlinedButton(onClick = { runtime.execute { runtime.repository.stop(active.id, observationAt(System.currentTimeMillis()), true) } },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) { Text("End at last observation") }
-                } else Button(onClick = {
+                } else {
+                    if (active.ownership == org.wastingnotime.motolog.domain.model.RideOwnership.AUTOMATIC)
+                        OutlinedButton(onClick = { start() }) { Text("Take manual ownership") }
+                    Button(onClick = {
                     context.startService(Intent(context, RideCaptureService::class.java).setAction(RideCaptureService.STOP).putExtra("ride", active.id))
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) { Text("Stop ride", style = MaterialTheme.typography.titleLarge) }
+                }
                 val saved = view
                 if (saved != null && !embedded) {
                     Text("Today · recorded local days", style = MaterialTheme.typography.titleLarge)
@@ -110,10 +124,11 @@ fun RideScreen(runtime: RideRuntime, bike: String, embedded: Boolean = false, ba
 @Composable
 fun RideStatusBar(runtime: RideRuntime) {
     var status by remember { mutableStateOf<Pair<org.wastingnotime.motolog.data.local.RideSession?, org.wastingnotime.motolog.data.local.RecordingCursor?>>(null to null) }
+    var armed by remember { mutableStateOf(false) }
     val context = LocalContext.current
     LaunchedEffect(runtime) {
         while (isActive) {
-            try { status = withContext(Dispatchers.IO) { runtime.repository.status() } } catch (_: Exception) { /* Screen shows read failure. */ }
+            try { armed = withContext(Dispatchers.IO) { runtime.repository.automatic() != null }; status = withContext(Dispatchers.IO) { runtime.repository.status() } } catch (_: Exception) { /* Screen shows read failure. */ }
             delay(1_000)
         }
     }
@@ -121,10 +136,16 @@ fun RideStatusBar(runtime: RideRuntime) {
     failure?.let { MaterialTheme { Text(it, color = MaterialTheme.colorScheme.error,
         modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp)) } }
     val active = status.first
+    if (active == null && armed) MaterialTheme {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp)) {
+            Text("Automatic mode armed", Modifier.weight(1f))
+            Button(onClick = { context.startService(Intent(context, RideCaptureService::class.java).setAction(RideCaptureService.DISARM)) }) { Text("Disarm") }
+        }
+    }
     if (active != null) MaterialTheme {
         Surface(tonalElevation = 4.dp) {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(if (failure != null) "Recording stopped · reopen to recover"
+                Text((if (armed) "Auto armed · " else "Auto off · ") + if (failure != null) "Recording stopped · reopen to recover"
                     else if (active.state == RideState.INTERRUPTED) "Ride interrupted · open Ride controls"
                     else if (status.second?.gap != null) "Recording · GPS gap" else "Recording · GPS estimate", modifier = Modifier.weight(1f).padding(top = 12.dp))
                 if (active.state == RideState.ACTIVE) Button(onClick = {

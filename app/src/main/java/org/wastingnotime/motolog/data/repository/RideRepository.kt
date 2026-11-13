@@ -3,6 +3,7 @@ package org.wastingnotime.motolog.data.repository
 import org.wastingnotime.motolog.data.local.*
 import org.wastingnotime.motolog.domain.model.*
 import org.wastingnotime.motolog.domain.ride.*
+import org.json.JSONArray
 import java.time.Instant
 import java.time.ZoneId
 
@@ -37,7 +38,7 @@ class RideRepository(private val db: MotoLogDatabase) {
     fun events(id: String, after: Long = -1): List<RideSample> = dao.speedEvents(id, after)
     fun gaps(id: String, offset: Int = 0): List<RideGap> = dao.gapPage(id, offset)
 
-    fun start(operation: String, bike: String, at: Observation, epoch: String, minimumElapsed: Long = 0): RideSession = db.runInTransaction<RideSession> {
+    fun start(operation: String, bike: String, at: Observation, epoch: String, minimumElapsed: Long = 0, automatic: Boolean = false): RideSession = db.runInTransaction<RideSession> {
         at.validate()
         require(operation.isNotBlank())
         val receiptPrefix = "ride-start-v1:${bike.length}:$bike:"
@@ -45,6 +46,7 @@ class RideRepository(private val db: MotoLogDatabase) {
             require(it.fingerprint.startsWith(receiptPrefix)) { "Operation ID reused" }
             return@runInTransaction requireNotNull(dao.ride(it.fingerprint.removePrefix(receiptPrefix)))
         }
+        if (!automatic) dao.disarm()
         dao.activeRide()?.let {
             require(it.state == RideState.ACTIVE) { "Resume or end the interrupted ride first." }
             require(it.bikeId == bike) { "Active ride belongs to a different motorcycle." }
@@ -53,8 +55,8 @@ class RideRepository(private val db: MotoLogDatabase) {
             dao.insert(AppliedOperation(operation, receiptPrefix + manual.id, at.epochMillis))
             return@runInTransaction manual
         }
-        val ride = RideSession(operation, bike, RideState.ACTIVE, 1, RideOwnership.MANUAL, at, null,
-            RideMetrics.VERSION, at.epochMillis)
+        val ride = RideSession(operation, bike, RideState.ACTIVE, 1, if (automatic) RideOwnership.AUTOMATIC else RideOwnership.MANUAL, at, null,
+            RideMetrics.VERSION, at.epochMillis, reducerState = if (automatic) AutomaticDetection.VERSION else null)
         dao.insert(ride)
         dao.project(RideTotal(ride.id, ride.algorithmVersion))
         dao.checkpoint(RecordingCursor(ride.id, clockEpoch = epoch, minimumElapsed = minimumElapsed, last = at, gap = at, gapReason = "AWAITING_FIX"))
@@ -64,6 +66,7 @@ class RideRepository(private val db: MotoLogDatabase) {
     }
 
     fun resume(id: String, at: Observation, epoch: String, minimumElapsed: Long = 0) = db.runInTransaction {
+        dao.disarm()
         val ride = requireNotNull(dao.activeRide()?.takeIf { it.id == id }) { "Ride has ended. Reload recording state." }
         require(ride.algorithmVersion == RideMetrics.VERSION) { "Unsupported recording version. End at last observation." }
         if (ride.state == RideState.ACTIVE) return@runInTransaction
@@ -74,6 +77,7 @@ class RideRepository(private val db: MotoLogDatabase) {
 
     /** Called on process initialization, service destruction, revoked permission or capture failure. */
     fun interrupt(reason: String, at: Observation) = db.runInTransaction {
+        dao.disarm()
         val ride = dao.activeRide() ?: return@runInTransaction
         if (ride.state == RideState.INTERRUPTED) return@runInTransaction
         val cursor = cursor(ride)
@@ -81,8 +85,9 @@ class RideRepository(private val db: MotoLogDatabase) {
         dao.update(ride.copy(state = RideState.INTERRUPTED, revision = ride.revision + 1))
     }
 
-    fun stop(id: String, at: Observation, lastObservation: Boolean = false) = db.runInTransaction {
+    fun stop(id: String, at: Observation, lastObservation: Boolean = false, automatic: Boolean = false) = db.runInTransaction {
         val ride = dao.activeRide()?.takeIf { it.id == id } ?: return@runInTransaction
+        if (!automatic) dao.disarm()
         var cursor = cursor(ride)
         at.validate()
         val requestedEnd = if (lastObservation || ride.state == RideState.INTERRUPTED) cursor.last else at
@@ -163,6 +168,64 @@ class RideRepository(private val db: MotoLogDatabase) {
                 lastElapsed = fix.elapsed, last = fix.observed, gap = null, gapReason = null, rejected = 0, tentativeGap = false))
         }
         dao.insert(AppliedOperation(receipt, "quality-fix-v1", fix.observed.epochMillis))
+    }
+
+    fun automatic(): AutomaticState? = dao.automatic()
+    fun disarm() = db.runInTransaction { dao.disarm() }
+    fun arm(bike: String, epoch: String, minimumElapsed: Long) = db.runInTransaction {
+        require(dao.activeRide()?.state != RideState.INTERRUPTED) { "Recover the interrupted ride first." }
+        require(dao.bikeRows().single().id == bike)
+        // Repeated Arm cannot erase an in-flight window.
+        if (dao.automatic() == null) dao.checkpoint(AutomaticState(bike = bike, epoch = epoch, minimumElapsed = minimumElapsed))
+    }
+
+    /** Detection checkpoint, candidate replay and ride projections share one transaction. */
+    fun capture(id: String, fix: RideMetrics.Fix) = db.runInTransaction {
+        val receipt = "auto-fix:$id"
+        if (dao.operation(receipt) != null) return@runInTransaction
+        val state = dao.automatic()
+        if (state == null) { accept(id, fix); return@runInTransaction }
+        if (fix.clockEpoch != state.epoch || state.version != AutomaticDetection.VERSION) {
+            interrupt("AUTOMATIC_CLOCK_CHANGE", fix.observed); return@runInTransaction
+        }
+        if (fix.elapsed < state.minimumElapsed) return@runInTransaction
+        val ride = dao.activeRide()
+        if (ride != null) accept(id, fix)
+        if (ride?.ownership == RideOwnership.MANUAL || ride?.state == RideState.INTERRUPTED) {
+            dao.checkpoint(state.copy(payload = "[]", idleSince = null))
+        } else {
+            val old = AutomaticDetection.Window(decode(state.payload), state.idleSince)
+            val result = AutomaticDetection.reduce(old, fix, ride != null)
+            when {
+                result.start -> {
+                    val first = result.window.fixes.first()
+                    val saved = start("auto:$id", state.bike, first.observed, state.epoch, first.elapsed, automatic = true)
+                    result.window.fixes.forEachIndexed { index, candidate -> accept("buffer:$id:$index", candidate) }
+                    check(saved.ownership == RideOwnership.AUTOMATIC)
+                    dao.checkpoint(state.copy(payload = "[]", idleSince = null))
+                }
+                result.stop -> {
+                    stop(requireNotNull(ride).id, fix.observed, automatic = true)
+                    dao.checkpoint(state.copy(payload = "[]", idleSince = null))
+                }
+                else -> dao.checkpoint(state.copy(payload = encode(result.window.fixes), idleSince = result.window.idleSince))
+            }
+        }
+        dao.insert(AppliedOperation(receipt, AutomaticDetection.VERSION, fix.observed.epochMillis))
+    }
+
+    private fun encode(fixes: List<RideMetrics.Fix>): String = JSONArray().apply {
+        fixes.forEach { f -> put(JSONArray(listOf(f.observed.epochMillis, f.observed.zoneId,
+            f.observed.offsetSeconds, f.clockEpoch, f.elapsed, f.receivedElapsed,
+            f.latitude, f.longitude, f.accuracy, f.speed, f.speedAccuracy))) }
+    }.toString()
+    private fun decode(payload: String): List<RideMetrics.Fix> {
+        val rows = JSONArray(payload)
+        return (0 until rows.length()).map { i ->
+            val f = rows.getJSONArray(i)
+            RideMetrics.Fix(Observation(f.getLong(0), f.getString(1), f.getInt(2)), f.getString(3),
+                f.getLong(4), f.getLong(5), f.getDouble(6), f.getDouble(7), f.getDouble(8), f.getDouble(9), f.getDouble(10))
+        }
     }
 
     private fun cursor(ride: RideSession): RecordingCursor = dao.cursor(ride.id) ?: run {

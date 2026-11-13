@@ -40,3 +40,9 @@ data class RideDay(val bikeId: String, val date: String, val zone: String,
 @Entity(foreignKeys = [ForeignKey(entity = RideSession::class, parentColumns = ["id"], childColumns = ["rideId"])])
 data class RideTotal(@PrimaryKey val rideId: String, val algorithmVersion: String,
     val meters: Double = 0.0, val eligibleMillis: Long = 0)
+
+/** One bounded detection checkpoint; never restored as armed after process loss. */
+@Entity
+data class AutomaticState(@PrimaryKey val slot: Int = 1, val bike: String,
+    val epoch: String, val minimumElapsed: Long, val payload: String = "[]",
+    val idleSince: Long? = null, val version: String = org.wastingnotime.motolog.domain.ride.AutomaticDetection.VERSION)

@@ -90,4 +90,7 @@ internal interface StoreDao {
     @Query("SELECT COUNT(*) FROM QualityFix WHERE rideId = :ride AND rejection IS NOT NULL") fun rejectedCount(ride: String): Long
     @Query("SELECT * FROM RideGap WHERE rideId = :ride ORDER BY started_epochMillis, id LIMIT 20 OFFSET :offset")
     fun gapPage(ride: String, offset: Int): List<RideGap>
+    @Query("SELECT * FROM AutomaticState WHERE slot = 1") fun automatic(): AutomaticState?
+    @Upsert fun checkpoint(row: AutomaticState)
+    @Query("DELETE FROM AutomaticState") fun disarm()
 }

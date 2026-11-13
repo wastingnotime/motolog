@@ -2,6 +2,8 @@ package org.wastingnotime.motolog.feature.fuel
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -59,7 +61,7 @@ fun FuelScreen(repository: FuelRepository, bikeId: String, initialScreen: String
     }
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.safeDrawingPadding().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
+            Column(Modifier.safeDrawingPadding().imePadding().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Spacer(Modifier.height(8.dp))
                 Text("Fuel and owner odometer", style = MaterialTheme.typography.headlineSmall)
@@ -127,7 +129,13 @@ fun FuelScreen(repository: FuelRepository, bikeId: String, initialScreen: String
 
 @Composable
 private fun Field(label: String, value: String, busy: Boolean, change: (String) -> Unit) {
-    OutlinedTextField(value, change, enabled = !busy, label = { Text(label) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = if (label.contains("odometer")) KeyboardType.Number else KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    OutlinedTextField(value, change, enabled = !busy, label = { Text(label) }, singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = if (label.contains("odometer")) KeyboardType.Number else KeyboardType.Decimal,
+            imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { focus.clearFocus(); keyboard?.hide() }),
+        modifier = Modifier.fillMaxWidth())
 }
 
 @Composable

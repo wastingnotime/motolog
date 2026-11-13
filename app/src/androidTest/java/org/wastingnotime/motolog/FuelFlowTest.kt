@@ -15,7 +15,14 @@ import org.wastingnotime.motolog.feature.registration.RegistrationScreen
 class FuelFlowTest {
     @get:Rule val compose = createComposeRule()
     private fun click(text: String) { compose.onNodeWithText(text).performScrollTo().performClick() }
-    private fun enter(label: String, text: String) { compose.onNodeWithText(label).performScrollTo().performTextReplacement(text) }
+    private fun enter(label: String, text: String) {
+        val field = compose.onNodeWithText(label)
+        field.performScrollTo().performTextReplacement(text)
+        // Exercise the owner's Done action before scrolling to a different control.
+        // A focused field can otherwise reclaim the viewport during IME layout.
+        field.performImeAction()
+        field.assertIsNotFocused()
+    }
     private fun waitFor(text: String) {
         compose.waitUntil(10_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
     }
@@ -63,7 +70,12 @@ class FuelFlowTest {
             compose.onNodeWithText("Save refuel").assertDoesNotExist()
             enter("Price per liter BRL/L", "6.000")
             click("Review refuel")
-            compose.onNodeWithTag("fuel-review").performScrollTo().assertTextContains("Liters: 16.667 L", substring = true)
+            try {
+                compose.onNodeWithTag("fuel-review").performScrollTo().assertTextContains("Liters: 16.667 L", substring = true)
+            } catch (failure: AssertionError) {
+                throw AssertionError("Unit-price review failed. Current form:\n" +
+                    compose.onRoot(useUnmergedTree = true).printToString(), failure)
+            }
             // Editing any reviewed field requires review again.
             enter("Recorded owner odometer km", "111")
             compose.onNodeWithText("Save refuel").assertDoesNotExist()

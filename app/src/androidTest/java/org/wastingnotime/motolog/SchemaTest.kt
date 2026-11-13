@@ -15,6 +15,20 @@ class SchemaTest {
         MotoLogDatabase::class.java)
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
+    @Test fun versionFiveAddsDisarmedAutomaticCheckpointWithoutChangingExistingRecords() {
+        val name = "migration-5-6-test"
+        val old = helper.createDatabase(name, 5)
+        old.execSQL("INSERT INTO Bike (id, slot, manualConfirmed) VALUES ('synthetic', 1, 0)")
+        old.execSQL("INSERT INTO AppliedOperation (id, fingerprint, recordedAt) VALUES ('receipt', 'original', 1)")
+        old.close()
+        val migrated = helper.runMigrationsAndValidate(name, 6, true, MotoLogDatabase.MIGRATION_5_6)
+        migrated.query("SELECT COUNT(*) FROM AutomaticState").use { assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0)) }
+        migrated.query("SELECT fingerprint FROM AppliedOperation WHERE id = 'receipt'").use {
+            assertTrue(it.moveToFirst()); assertEquals("original", it.getString(0))
+        }
+        migrated.close(); context.deleteDatabase(name)
+    }
+
     @Test fun exportedInitialSchemaValidatesWithoutInventedMigration() {
         helper.createDatabase("schema-test", 1).close()
         helper.runMigrationsAndValidate("schema-test", 1, true).close()

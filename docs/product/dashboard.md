@@ -2,8 +2,9 @@
 
 The registered motorcycle opens on the offline dashboard. Large labeled Start,
 Stop and Quick refuel controls are for use only while safely stopped. Recording,
-GPS-gap and interrupted states use committed ride state. Automatic mode is shown
-as off; optional automatic detection is a separate feature. Motion-based lockout
+GPS-gap and interrupted states use committed ride state. Automatic mode defaults off; ride controls expose explicit Arm/Disarm and manual
+ownership takeover. Armed mode remains visible in parked flows and the notification;
+see the [automatic lifecycle](rides.md). Motion-based lockout
 is absent under the accepted V1 decision. Stop also stays available above parked
 screens and through the recording notification, independently of GPS fixes.
 
@@ -12,7 +13,9 @@ Enlarged text uses a single scrolling column with no fixed text heights. Quick
 actions retain 64 dp minimum targets and matching typography. System-bar icon
 appearance follows the actual app surface brightness.
 
-Quick refuel opens directly into the two existing fuel modes. Enter total paid,
+Quick refuel opens directly into the two existing fuel modes. Numeric fields expose
+a keyboard Done action that releases focus; the form reserves keyboard space so
+Review and Save can be scrolled into the visible area. Enter total paid,
 liters or unit price, and the motorcycle's owner odometer; review and save returns
 to the dashboard. Observed-now is the default, frozen at review so a retry uses the
 same observation and operation identity. Optional native date/time pickers support
