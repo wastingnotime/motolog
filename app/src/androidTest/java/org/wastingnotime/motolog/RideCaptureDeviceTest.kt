@@ -51,6 +51,7 @@ class RideCaptureDeviceTest {
         @Suppress("DEPRECATION")
         manager.addTestProvider(LocationManager.GPS_PROVIDER, false, true, false, false, true, true, true, 1, 1)
         manager.setTestProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        val initial = view(bike)
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
             val operation = UUID.randomUUID().toString()
@@ -66,7 +67,7 @@ class RideCaptureDeviceTest {
                 Thread.sleep(1_100)
             }
             emit(); emit()
-            waitFor { view(bike).millis > 0 }
+            waitFor { view(bike).millis > initial.millis }
             val foreground = view(bike)
             assertEquals(operation, foreground.active!!.id)
             assertTrue(context.getSystemService(NotificationManager::class.java).activeNotifications.any { it.id == 1 && it.notification.actions.isNotEmpty() })
@@ -82,7 +83,8 @@ class RideCaptureDeviceTest {
             assertEquals(operation, recovered.active!!.id)
             assertTrue(recovered.millis - beforeGap in 500..5_000)
             assertTrue(recovered.gaps.any { it.reason == "MISSING_FIX" })
-            assertEquals(0.0, recovered.meters, 0.0)
+            assertEquals(initial.meters, recovered.meters, 0.0)
+            assertEquals(0.0, app.rides.repository.detail(operation).total!!.meters, 0.0)
             val notification = context.getSystemService(NotificationManager::class.java).activeNotifications.single { it.id == 1 }
             notification.notification.actions.single().actionIntent.send()
             waitFor { app.rides.repository.status().first == null && !app.rides.running }

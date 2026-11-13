@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     MaintenanceOccurrence::class, MaintenanceHistory::class, HistoryAnnotation::class,
     FuelEvent::class, RideSession::class, RideSample::class, RideGap::class,
     ImportRow::class, AppliedOperation::class, OccurrenceRevision::class, PreventiveObligation::class, QualifyingAnchor::class,
-    ObligationSatisfaction::class, RecordingCursor::class, QualityFix::class, RideDay::class], version = 4, exportSchema = true)
+    ObligationSatisfaction::class, RecordingCursor::class, QualityFix::class, RideDay::class, RideTotal::class], version = 5, exportSchema = true)
 abstract class MotoLogDatabase : RoomDatabase() {
     internal abstract fun dao(): StoreDao
 
@@ -53,12 +53,51 @@ abstract class MotoLogDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS RideTotal (rideId TEXT NOT NULL PRIMARY KEY, algorithmVersion TEXT NOT NULL, meters REAL NOT NULL, eligibleMillis INTEGER NOT NULL, FOREIGN KEY(rideId) REFERENCES RideSession(id) ON UPDATE NO ACTION ON DELETE NO ACTION)")
+                // Stream one ride's immutable evidence at a time. No history-sized list or
+                // invented baseline for an unsupported historical algorithm.
+                db.query("SELECT id FROM RideSession WHERE algorithmVersion = ?", arrayOf(org.wastingnotime.motolog.domain.ride.RideMetrics.VERSION)).use { rides ->
+                    while (rides.moveToNext()) {
+                        val id = rides.getString(0)
+                        var meters = 0.0; var millis = 0L
+                        var previous: org.wastingnotime.motolog.domain.ride.RideMetrics.Fix? = null
+                        var sequence = -1L
+                        db.query("SELECT * FROM RideSample WHERE rideId = ? ORDER BY sequence", arrayOf(id)).use { rows ->
+                            fun long(key: String) = rows.getLong(rows.getColumnIndexOrThrow(key))
+                            fun double(key: String) = rows.getDouble(rows.getColumnIndexOrThrow(key))
+                            fun string(key: String) = rows.getString(rows.getColumnIndexOrThrow(key))
+                            while (rows.moveToNext()) {
+                                val fix = org.wastingnotime.motolog.domain.ride.RideMetrics.Fix(
+                                    org.wastingnotime.motolog.domain.model.Observation(long("observed_epochMillis"), string("observed_zoneId"), long("observed_offsetSeconds").toInt()),
+                                    string("clockEpoch"), long("elapsedMillis"), long("elapsedMillis"), double("latitude"), double("longitude"),
+                                    double("accuracyMeters"), double("speedMps"), double("speedAccuracyMps"))
+                                val prior = previous
+                                if (prior != null && long("sequence") == sequence + 1) {
+                                    val gap = db.query("SELECT 1 FROM RideGap WHERE rideId = ? AND started_epochMillis < ? AND (ended_epochMillis IS NULL OR ended_epochMillis > ?) LIMIT 1",
+                                        arrayOf(id, fix.observed.epochMillis, prior.observed.epochMillis)).use { it.moveToFirst() }
+                                    if (!gap) {
+                                        val pair = org.wastingnotime.motolog.domain.ride.RideMetrics.pair(prior, fix)
+                                        if (pair.reason == null) { meters += pair.meters; millis += pair.millis }
+                                    }
+                                }
+                                previous = fix; sequence = long("sequence")
+                            }
+                        }
+                        db.execSQL("INSERT INTO RideTotal (rideId, algorithmVersion, meters, eligibleMillis) VALUES (?, ?, ?, ?)",
+                            arrayOf(id, org.wastingnotime.motolog.domain.ride.RideMetrics.VERSION, meters, millis))
+                    }
+                }
+            }
+        }
+
         fun open(context: Context, name: String = "motolog.db"): MotoLogDatabase =
             builder(context, name).build()
 
         internal fun builder(context: Context, name: String): Builder<MotoLogDatabase> =
             Room.databaseBuilder(context.applicationContext, MotoLogDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) { installGuards(db) }
                 })

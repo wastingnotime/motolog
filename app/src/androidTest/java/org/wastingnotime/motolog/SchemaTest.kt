@@ -68,6 +68,29 @@ class SchemaTest {
         } finally { db.close(); context.deleteDatabase(name) }
     }
 
+    @Test fun versionFourBackfillsBoundedPerRideTotalsWithoutBridgingGapsOrInventingUnknownAlgorithms() {
+        val name = "migration-4-5-test"
+        val old = helper.createDatabase(name, 4)
+        val version = org.wastingnotime.motolog.domain.ride.RideMetrics.VERSION
+        old.execSQL("INSERT INTO Bike (id, slot, manualConfirmed) VALUES ('bike', 1, 0)")
+        for ((id, algorithm) in listOf("ride" to version, "legacy" to "unsupported")) {
+            old.execSQL("INSERT INTO RideSession (id, bikeId, state, ownership, started_epochMillis, started_zoneId, started_offsetSeconds, ended_epochMillis, ended_zoneId, ended_offsetSeconds, algorithmVersion, recordedAt, revision) VALUES (?, 'bike', 'ENDED', 'MANUAL', 1700000000000, 'UTC', 0, 1700000005000, 'UTC', 0, ?, 1700000000000, 0)", arrayOf(id, algorithm))
+        }
+        repeat(4) { i ->
+            old.execSQL("INSERT INTO RideSample (id, bikeId, rideId, sequence, observed_epochMillis, observed_zoneId, observed_offsetSeconds, clockEpoch, elapsedMillis, latitude, longitude, accuracyMeters, speedMps, speedAccuracyMps, speedEvent, recordedAt) VALUES (?, 'bike', 'ride', ?, ?, 'UTC', 0, 'epoch', ?, 0, 0, 5, 0, 1, 1, ?)", arrayOf<Any>("sample-$i", i, 1700000000000L + i * 1000, i * 1000L, 1700000000000L + i * 1000))
+        }
+        old.execSQL("INSERT INTO RideGap (id, bikeId, rideId, reason, rejectedCount, started_epochMillis, started_zoneId, started_offsetSeconds, ended_epochMillis, ended_zoneId, ended_offsetSeconds) VALUES ('gap', 'bike', 'ride', 'PROCESS_RESTART', 0, 1700000001000, 'UTC', 0, 1700000002000, 'UTC', 0)")
+        old.close()
+        val migrated = helper.runMigrationsAndValidate(name, 5, true, MotoLogDatabase.MIGRATION_4_5)
+        migrated.query("SELECT meters, eligibleMillis FROM RideTotal WHERE rideId = 'ride'").use {
+            assertTrue(it.moveToFirst()); assertEquals(0.0, it.getDouble(0), 0.0); assertEquals(2000L, it.getLong(1))
+        }
+        migrated.query("SELECT * FROM RideTotal WHERE rideId = 'legacy'").use { assertFalse(it.moveToFirst()) }
+        migrated.query("SELECT COUNT(*) FROM RideSample").use { assertTrue(it.moveToFirst()); assertEquals(4L, it.getLong(0)) }
+        migrated.close()
+        context.deleteDatabase(name)
+    }
+
     @Test fun indexedMigrationPreservesEveryRecordAndReceiptAndInstallsGuards() {
         val name = "migration-1-2-test"
         val old = helper.createDatabase(name, 1)

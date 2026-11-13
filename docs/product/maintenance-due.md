@@ -206,3 +206,10 @@ edits, ordinary UI scheduling and process-separated restart. The oil OR regressi
 covers a June reminder cleared by the explicitly selected mileage-due replacement
 in March, with the next calendar target in September and the future mileage grid
 unchanged. Emulator checks do not establish physical-owner field acceptance.
+
+The dashboard and maintenance flow apply the 24-hour owner-reading rule. Exactly
+24 hours is fresh. Older below-target mileage branches are unknown for current
+status; previously reached mileage remains due and calendar branches still apply.
+Future observations cannot establish reached mileage. The displayed observation
+time and age distinguish historical evidence from current mileage, without GPS
+substitution. Management reads and ordinary commands exclude raw ride history.

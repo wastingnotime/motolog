@@ -42,7 +42,7 @@ class MaintenanceOutcomeTest {
         return store.snapshot().occurrences.single { it.id == "job:$id" }
     }
     private fun apply(id: String, command: ChecklistOutcome) = repo.applyOutcome(id, command, "reading", today, now)
-    private fun visible() = repo.existing("bike", "reading", today).pending.map { it.occurrence }
+    private fun visible() = repo.existing("bike", "reading", today, now).pending.map { it.occurrence }
     private fun failReceipt(id: String) {
         db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_outcome BEFORE INSERT ON AppliedOperation WHEN NEW.id = '$id' BEGIN SELECT RAISE(ABORT, 'Synthetic disk failure'); END")
     }
@@ -153,7 +153,7 @@ class MaintenanceOutcomeTest {
     @Test fun scheduledByDateKmBothAndUnscheduledJobsRemainOpenAndFirstSchedulingHasNoWorkHistory() {
         val cases = listOf(WorkTarget(date = "2026-10-01"), WorkTarget(km = 20_000), WorkTarget(25_000, "2026-10-01"), null)
         val jobs = cases.mapIndexed { i, target -> job("case$i", target) }
-        val view = repo.existing("bike", "reading", today)
+        val view = repo.existing("bike", "reading", today, now)
         jobs.take(3).forEach { job -> assertEquals(org.wastingnotime.motolog.domain.maintenance.DueStatus.DUE,
             view.pending.single { it.occurrence.id == job.id }.effective.status) }
         assertEquals(org.wastingnotime.motolog.domain.maintenance.DueStatus.UNSCHEDULED,

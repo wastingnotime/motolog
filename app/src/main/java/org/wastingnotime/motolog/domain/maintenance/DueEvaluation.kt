@@ -36,7 +36,7 @@ object DueEvaluation {
     }
 
     fun evaluate(targets: DueTargets, currentKm: Long?, today: LocalDate,
-        manualReview: Boolean = false): DueResult {
+        manualReview: Boolean = false, mileageFresh: Boolean = true): DueResult {
         require(currentKm == null || currentKm >= 0)
         fun <T : Comparable<T>> branch(expected: Boolean, target: T?, current: T?): BranchStatus = when {
             !expected -> BranchStatus.NOT_APPLICABLE
@@ -44,7 +44,9 @@ object DueEvaluation {
             current >= target -> BranchStatus.DUE
             else -> BranchStatus.BELOW
         }
-        val km = branch(targets.expectsKm, targets.km, currentKm)
+        val km = branch(targets.expectsKm, targets.km, currentKm).let {
+            if (!mileageFresh && it == BranchStatus.BELOW) BranchStatus.UNKNOWN else it
+        }
         val date = branch(targets.expectsDate, targets.date, today)
         val branches = listOf(km, date)
         val status = when {

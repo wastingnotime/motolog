@@ -35,3 +35,8 @@ data class QualityFix(
     parentColumns = ["id"], childColumns = ["bikeId"])])
 data class RideDay(val bikeId: String, val date: String, val zone: String,
     val meters: Double = 0.0, val eligibleMillis: Long = 0, val gaps: Long = 0, val rejected: Long = 0)
+
+/** Versioned per-ride totals, updated atomically with raw evidence and daily allocations. */
+@Entity(foreignKeys = [ForeignKey(entity = RideSession::class, parentColumns = ["id"], childColumns = ["rideId"])])
+data class RideTotal(@PrimaryKey val rideId: String, val algorithmVersion: String,
+    val meters: Double = 0.0, val eligibleMillis: Long = 0)

@@ -1,6 +1,10 @@
 package org.wastingnotime.motolog.feature.fuel
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -17,15 +21,15 @@ import org.wastingnotime.motolog.data.repository.*
 import org.wastingnotime.motolog.domain.fuel.*
 import org.wastingnotime.motolog.domain.model.*
 import java.time.Instant
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.UUID
+import org.wastingnotime.motolog.feature.common.ObservationInput
+import org.wastingnotime.motolog.feature.common.observationText
+import org.wastingnotime.motolog.domain.ride.observationAt
 
 @Composable
-fun FuelScreen(repository: FuelRepository, bikeId: String, back: () -> Unit) {
+fun FuelScreen(repository: FuelRepository, bikeId: String, initialScreen: String = "home", quick: Boolean = false, back: () -> Unit) {
     var saved by remember { mutableStateOf<WriteBatch?>(null) }
-    var screen by rememberSaveable { mutableStateOf("home") }
+    var screen by rememberSaveable { mutableStateOf(initialScreen) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
@@ -45,7 +49,8 @@ fun FuelScreen(repository: FuelRepository, bikeId: String, back: () -> Unit) {
             try {
                 withContext(Dispatchers.IO) { command() }
                 saved = withContext(Dispatchers.IO) { repository.snapshot() }
-                screen = "home"
+                now = System.currentTimeMillis()
+                if (quick) back() else screen = "home"
             } catch (e: Exception) {
                 error = if (e is IllegalArgumentException) e.message ?: "Review entered values."
                     else "Could not confirm save. Retry the same entry; its operation ID prevents duplicate records."
@@ -59,8 +64,8 @@ fun FuelScreen(repository: FuelRepository, bikeId: String, back: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text("Fuel and owner odometer", style = MaterialTheme.typography.headlineSmall)
                 TextButton(enabled = !busy, onClick = {
-                    if (screen == "home") back() else { screen = "home"; error = null }
-                }) { Text(if (screen == "home") "Back to checklist" else "Back to fuel") }
+                    if (quick || screen == "home") back() else { screen = "home"; error = null }
+                }) { Text(if (quick || screen == "home") "Back to dashboard" else "Back to fuel") }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("fuel-error")) }
                 if (saved == null) Text("Opening local records…")
                 else when (screen) {
@@ -120,30 +125,27 @@ fun FuelScreen(repository: FuelRepository, bikeId: String, back: () -> Unit) {
     }
 }
 
-private fun observationText(observed: Observation): String =
-    "${Instant.ofEpochMilli(observed.epochMillis).atZone(java.time.ZoneId.of(observed.zoneId)).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)} (${observed.zoneId})"
-
 @Composable
 private fun Field(label: String, value: String, busy: Boolean, change: (String) -> Unit) {
-    OutlinedTextField(value, change, enabled = !busy, label = { Text(label) }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(value, change, enabled = !busy, label = { Text(label) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = if (label.contains("odometer")) KeyboardType.Number else KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
 }
 
 @Composable
 private fun EntryForm(refuel: Boolean, busy: Boolean,
     save: (String, FuelMode, String, String, String, Observation) -> Unit) {
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val id = rememberSaveable { UUID.randomUUID().toString() }
-    val initial = remember { ZonedDateTime.now().truncatedTo(ChronoUnit.SECONDS) }
     var modeName by rememberSaveable { mutableStateOf(FuelMode.LITERS.name) }
     val mode = FuelMode.valueOf(modeName)
     var total by rememberSaveable { mutableStateOf("") }
     var quantity by rememberSaveable { mutableStateOf("") }
     var km by rememberSaveable { mutableStateOf("") }
-    var local by rememberSaveable { mutableStateOf(initial.toLocalDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)) }
-    var zone by rememberSaveable { mutableStateOf(initial.zone.id) }
-    var offset by rememberSaveable { mutableStateOf(initial.offset.id) }
+    var selectedTime by rememberSaveable { mutableStateOf<Long?>(null) }
+    var reviewedTime by rememberSaveable { mutableStateOf<Long?>(null) }
     var reviewed by rememberSaveable { mutableStateOf<List<String>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    val inputs = listOf(modeName, total, quantity, km, local, zone, offset)
+    val inputs = listOf(modeName, total, quantity, km, selectedTime.toString())
     val isReviewed = reviewed == inputs
     Text(if (refuel) "New refuel" else "Update odometer", style = MaterialTheme.typography.titleLarge)
     if (refuel) {
@@ -152,22 +154,21 @@ private fun EntryForm(refuel: Boolean, busy: Boolean,
             modeName = if (mode == FuelMode.LITERS) FuelMode.UNIT_PRICE.name else FuelMode.LITERS.name
             quantity = ""; reviewed = null; error = null
         }) { Text(if (mode == FuelMode.LITERS) "Enter price per liter instead" else "Enter liters instead") }
-        Text("Changing mode clears its quantity. Review all resulting values before saving.")
         Field("Total paid BRL", total, busy) { total = it }
         Field(if (mode == FuelMode.LITERS) "Liters" else "Price per liter BRL/L", quantity, busy) { quantity = it }
     }
     Field("Recorded owner odometer km", km, busy) { km = it }
-    Text("Enter the motorcycle display reading. Backdated evidence must agree with both neighboring owner readings.")
-    Field("Observed local timestamp", local, busy) { local = it }
-    Field("Observation zone", zone, busy) { zone = it }
-    Field("UTC offset", offset, busy) { offset = it }
-    Text("Example timestamp: 2026-01-15T14:30:00. Zone and UTC offset must match, including daylight-saving time.")
+    Text("Read the odometer from your motorcycle display.")
+    ObservationInput(selectedTime, !busy) { selectedTime = it; reviewed = null }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("fuel-input-error")) }
     Button(enabled = !busy, onClick = {
         try {
             OwnerObservation.kilometers(km)
-            OwnerObservation.validate(OwnerObservation.parse(local, zone, offset), System.currentTimeMillis())
+            val observed = selectedTime ?: System.currentTimeMillis()
+            OwnerObservation.validate(observationAt(observed), System.currentTimeMillis())
+            reviewedTime = observed
             if (refuel) FuelValues.parse(mode, total, quantity)
+            focus.clearFocus(); keyboard?.hide()
             reviewed = inputs; error = null
         } catch (e: IllegalArgumentException) { reviewed = null; error = e.message }
     }) { Text(if (refuel) "Review refuel" else "Review owner reading") }
@@ -175,11 +176,11 @@ private fun EntryForm(refuel: Boolean, busy: Boolean,
         if (refuel) {
             val values = FuelValues.parse(mode, total, quantity)
             Text("Total paid: BRL ${values.totalDisplay}\nLiters: ${values.litersDisplay} L\nPrice per liter: BRL ${values.unitPriceDisplay}/L", modifier = Modifier.testTag("fuel-review"))
-            Text("Entered decimals are retained. Derived values use scale 12, HALF_UP; liters and price display three places.")
+            Text("Check the motorcycle reading and amounts before saving.")
         }
-        Text("Owner odometer: $km km\nObserved: $local $offset ($zone)")
+        Text("Owner odometer: $km km\nObserved: ${observationText(observationAt(requireNotNull(reviewedTime)))}")
         Button(enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), onClick = {
-            save(id, mode, total, quantity, km, OwnerObservation.parse(local, zone, offset))
+            save(id, mode, total, quantity, km, observationAt(requireNotNull(reviewedTime)))
         }) { Text(if (refuel) "Save refuel" else "Save owner reading") }
     }
 }

@@ -26,6 +26,17 @@ class RideRepository(private val db: MotoLogDatabase) {
             (active ?: recent.firstOrNull())?.let { dao.recentGaps(it.id) }.orEmpty())
     }
 
+    fun history(bike: String, offset: Int = 0): List<RideSession> = dao.ridePage(bike, offset)
+    data class Detail(val ride: RideSession, val total: RideTotal?, val gapCount: Long,
+        val rejected: Long, val cursor: RecordingCursor?) {
+        val averageKmh get() = total?.takeIf { it.eligibleMillis > 0 }?.let { it.meters / it.eligibleMillis * 3600 }
+    }
+    fun detail(id: String): Detail = db.runInTransaction<Detail> {
+        Detail(requireNotNull(dao.ride(id)), dao.total(id), dao.gapCount(id), dao.rejectedCount(id), dao.cursor(id))
+    }
+    fun events(id: String, after: Long = -1): List<RideSample> = dao.speedEvents(id, after)
+    fun gaps(id: String, offset: Int = 0): List<RideGap> = dao.gapPage(id, offset)
+
     fun start(operation: String, bike: String, at: Observation, epoch: String, minimumElapsed: Long = 0): RideSession = db.runInTransaction<RideSession> {
         at.validate()
         require(operation.isNotBlank())
@@ -45,6 +56,7 @@ class RideRepository(private val db: MotoLogDatabase) {
         val ride = RideSession(operation, bike, RideState.ACTIVE, 1, RideOwnership.MANUAL, at, null,
             RideMetrics.VERSION, at.epochMillis)
         dao.insert(ride)
+        dao.project(RideTotal(ride.id, ride.algorithmVersion))
         dao.checkpoint(RecordingCursor(ride.id, clockEpoch = epoch, minimumElapsed = minimumElapsed, last = at, gap = at, gapReason = "AWAITING_FIX"))
         addDay(bike, at, gaps = 1)
         dao.insert(AppliedOperation(operation, receiptPrefix + ride.id, at.epochMillis))
@@ -133,6 +145,8 @@ class RideRepository(private val db: MotoLogDatabase) {
             }
             if (pair?.reason != null) cursor = openGap(ride, cursor, pair.reason)
             if (pair != null && pair.reason == null) {
+                val total = requireNotNull(dao.total(ride.id))
+                dao.project(total.copy(meters = total.meters + pair.meters, eligibleMillis = total.eligibleMillis + pair.millis))
                 RideMetrics.allocate(previous.fix(), fix, pair).forEach { allocation ->
                     val old = dao.day(ride.bikeId, allocation.date, allocation.zone) ?: RideDay(ride.bikeId, allocation.date, allocation.zone)
                     dao.project(old.copy(meters = old.meters + allocation.meters, eligibleMillis = old.eligibleMillis + allocation.millis))

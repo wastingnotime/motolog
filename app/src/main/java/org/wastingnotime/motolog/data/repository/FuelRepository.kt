@@ -10,7 +10,11 @@ data class ReadingCommand(val operationId: String, val bikeId: String, val odome
 
 class FuelRepository(private val db: MotoLogDatabase) {
     private val store = LocalStore(db)
-    fun snapshot(): WriteBatch = store.snapshot()
+    fun snapshot(): WriteBatch = db.runInTransaction<WriteBatch> {
+        val bike = db.dao().bikeRows().singleOrNull()
+        WriteBatch(bikes = listOfNotNull(bike), fuels = bike?.let { db.dao().fuelForBike(it.id) }.orEmpty(),
+            readings = bike?.let { db.dao().readingsForBike(it.id) }.orEmpty())
+    }
 
     fun refuel(command: RefuelCommand, now: Long): Boolean = with(command) {
         val values = FuelValues.parse(mode, totalPaid, quantity)

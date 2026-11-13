@@ -21,12 +21,13 @@ import org.wastingnotime.motolog.domain.maintenance.FazerInventory
 import org.wastingnotime.motolog.feature.maintenance.MaintenanceScreen
 import org.wastingnotime.motolog.feature.fuel.FuelScreen
 import org.wastingnotime.motolog.domain.model.*
-import java.time.OffsetDateTime
 import java.util.UUID
+import org.wastingnotime.motolog.feature.common.ObservationInput
+import org.wastingnotime.motolog.domain.ride.observationAt
 
 @Composable
 fun RegistrationScreen(repository: RegistrationRepository, maintenance: MaintenanceRepository? = null,
-    fuel: FuelRepository? = null, rides: org.wastingnotime.motolog.feature.ride.RideRuntime? = null) {
+    fuel: FuelRepository? = null, rides: org.wastingnotime.motolog.feature.ride.RideRuntime? = null, back: (() -> Unit)? = null) {
     var snapshot by remember { mutableStateOf<WriteBatch?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -71,6 +72,7 @@ fun RegistrationScreen(repository: RegistrationRepository, maintenance: Maintena
             Column(Modifier.safeDrawingPadding().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Spacer(Modifier.height(8.dp))
+                back?.let { TextButton(onClick = it) { Text("Back to dashboard") } }
                 Text("MotoLog", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 Text("One bike. Your records, offline.", style = MaterialTheme.typography.bodyLarge)
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("error")) }
@@ -127,8 +129,11 @@ fun RegistrationScreen(repository: RegistrationRepository, maintenance: Maintena
                                         Text("${item.label} · ${item.effective.action} ${item.effective.component}", style = MaterialTheme.typography.titleMedium)
                                         Text(scheduleText(item.effective))
                                         item.effective.coverageNote?.let { Text(it) }
-                                        Text("Source: ${if (item.override != null) "Owner override; original source retained\n" else ""}${item.source}", style = MaterialTheme.typography.bodySmall)
-                                        if (item.override != null) Text("Original baseline: ${item.baseline.rule.action} ${item.baseline.rule.component}\n${scheduleText(item.baseline.rule)}\n${item.baseline.rule.coverageNote.orEmpty()}", style = MaterialTheme.typography.bodySmall)
+                                        var sourceDetails by remember(item.baseline.id) { mutableStateOf(false) }
+                                        Text("Source: ${item.label} · ${item.effective.locator ?: "Owner"}")
+                                        TextButton(modifier = Modifier.testTag("source-${item.baseline.id}"), onClick = { sourceDetails = !sourceDetails }) { Text("Source details") }
+                                        if (sourceDetails) Text("Source: ${if (item.override != null) "Owner override; original source retained\n" else ""}${item.source}", style = MaterialTheme.typography.bodySmall)
+                                        if (sourceDetails && item.override != null) Text("Original baseline: ${item.baseline.rule.action} ${item.baseline.rule.component}\n${scheduleText(item.baseline.rule)}\n${item.baseline.rule.coverageNote.orEmpty()}", style = MaterialTheme.typography.bodySmall)
                                         TextButton(enabled = !busy, onClick = { selected = item.baseline.id; screen = "edit" }) { Text("Edit ${item.baseline.rule.component}") }
                                     }
                                 }
@@ -170,24 +175,22 @@ private fun RegisterForm(busy: Boolean, save: (String, Int?, Boolean, OdometerRe
     var year by rememberSaveable { mutableStateOf("") }
     var match by rememberSaveable { mutableStateOf(false) }
     var km by rememberSaveable { mutableStateOf("") }
-    var observed by rememberSaveable { mutableStateOf("") }
+    var observedTime by rememberSaveable { mutableStateOf<Long?>(null) }
     var invalid by remember { mutableStateOf<String?>(null) }
     Text("Register your Fazer", style = MaterialTheme.typography.headlineSmall)
     Text("Supported preset: YS250 / BlueFlex / BR / model 2017. Leave the manual match unconfirmed if any detail is unknown.")
     Field("Manufacture year (optional)", year, !busy) { year = it }
     Choice(matchText, match, !busy) { match = it }
     Field("Owner odometer km (optional)", km, !busy) { km = it }
-    Field("Observed at (ISO timestamp with offset)", observed, !busy) { observed = it }
-    TextButton(enabled = !busy, onClick = { observed = OffsetDateTime.now().toString() }) { Text("I observed this reading now") }
-    Text("Skip both reading fields if unknown. A past timestamp stays historical. No prior service is assumed.")
+    if (km.isNotBlank()) ObservationInput(observedTime, !busy) { observedTime = it }
+    Text("Leave the reading empty if unknown. Past readings stay historical. No prior service is assumed.")
     invalid?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     Button(enabled = !busy, onClick = {
         try {
             val y = optionalYear(year)
             require(!match || y != null) { "Enter manufacture year before confirming the manual" }
-            require(km.isNotBlank() || observed.isBlank()) { "Enter kilometers or clear the timestamp" }
             val reading = if (km.isBlank()) null else OdometerReading("$id:initial", id, kilometers(km),
-                Certainty.CONFIRMED, ReadingSource.OWNER, observation(observed), System.currentTimeMillis())
+                Certainty.CONFIRMED, ReadingSource.OWNER, observationAt(observedTime ?: System.currentTimeMillis()), System.currentTimeMillis())
             save(id, y, match, reading)
         } catch (e: Exception) { invalid = e.message ?: "Check reading and timestamp" }
     }, modifier = Modifier.fillMaxWidth()) { Text("Register offline") }
@@ -251,7 +254,8 @@ private fun EntryForm(bikeId: String, items: List<ChecklistItem>, repository: Re
     var component by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf("") }
     var km by rememberSaveable { mutableStateOf("") }
-    var observed by rememberSaveable { mutableStateOf("") }
+    var observedTime by rememberSaveable { mutableStateOf<Long?>(null) }
+    var observationKnown by rememberSaveable { mutableStateOf(false) }
     var cost by rememberSaveable { mutableStateOf("") }
     var baseline by rememberSaveable { mutableStateOf<String?>(null) }
     var performed by rememberSaveable { mutableStateOf(false) }
@@ -300,8 +304,8 @@ private fun EntryForm(bikeId: String, items: List<ChecklistItem>, repository: Re
         }
         if (kind == EntryKind.PERFORMED.name || kind == EntryKind.READING.name) Field("Recorded odometer km (optional)", km, !preparing) { km = it }
         if (kind == EntryKind.READING.name) {
-            Field("Observed at (ISO timestamp with offset; optional if unknown)", observed, !preparing) { observed = it }
-            TextButton(onClick = { observed = OffsetDateTime.now().toString() }) { Text("I observed this reading now") }
+            Choice("I know when this reading was observed", observationKnown, !preparing) { observationKnown = it }
+            if (observationKnown) ObservationInput(observedTime, !preparing) { observedTime = it }
         }
         if (kind == EntryKind.PROGRAMMED.name) Text("Imported as open work with unknown date, odometer target and cost. It creates no completed history.")
         invalid?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -314,7 +318,7 @@ private fun EntryForm(bikeId: String, items: List<ChecklistItem>, repository: Re
                     val draft = SetupEntry(id, bikeId, entryKind, note, Certainty.valueOf(certainty),
                         date = if (entryKind == EntryKind.PERFORMED) date.takeIf { it.isNotBlank() } else null,
                         km = if (entryKind == EntryKind.PERFORMED || entryKind == EntryKind.READING) km.takeIf { it.isNotBlank() }?.let(::kilometers) else null,
-                        observed = if (entryKind == EntryKind.READING && observed.isNotBlank()) observation(observed) else null,
+                        observed = if (entryKind == EntryKind.READING && observationKnown) observationAt(observedTime ?: System.currentTimeMillis()) else null,
                         cost = if (entryKind == EntryKind.PERFORMED) cost.takeIf { it.isNotBlank() } else null,
                         action = action.ifBlank { "Review" }, component = component.ifBlank { "Owner note" },
                         baselineId = if (entryKind == EntryKind.PERFORMED) baseline else null)
@@ -332,15 +336,9 @@ private fun optionalYear(value: String): Int? = if (value.isBlank()) null else {
 private fun kilometers(value: String): Long {
     require(value.matches(Regex("[0-9]{1,12}"))) { "Use whole nonnegative kilometers" }; return value.toLong()
 }
-private fun observation(value: String): Observation {
-    val time = try { OffsetDateTime.parse(value) } catch (_: Exception) {
-        throw IllegalArgumentException("Enter an ISO timestamp with offset, such as 2025-01-02T10:30:00-03:00")
-    }
-    return Observation(time.toInstant().toEpochMilli(), time.offset.id, time.offset.totalSeconds)
-}
 private fun scheduleText(rule: RuleValues) = when (rule.scheduleKind) {
     ScheduleKind.INTERVAL -> "Interval: ${rule.intervalKm?.let { "$it km" } ?: "distance unknown / not specified"}; ${rule.intervalMonths?.let { "$it months" } ?: "time unknown / not specified"}"
-    ScheduleKind.MILESTONE -> "Fixed mileage reference · evaluation pending"
+    ScheduleKind.MILESTONE -> "Fixed mileage reference · see Maintenance for due targets"
     ScheduleKind.CONDITION -> "Manual review · ${rule.intervalKm?.let { "$it km; " }.orEmpty()}${rule.intervalMonths?.let { "$it months; " }.orEmpty()}condition/event triggers also apply"
     ScheduleKind.UNKNOWN -> "Schedule unknown / unseeded"
 }

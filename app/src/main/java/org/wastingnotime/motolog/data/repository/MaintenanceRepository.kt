@@ -23,9 +23,11 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
     fun applyOutcome(operationId: String, outcome: ChecklistOutcome, readingId: String?, today: LocalDate, now: Long): Boolean =
         MaintenanceCommands(db).outcome(operationId, outcome, readingId, today, now)
 
-    fun completedHistory(bikeId: String): List<MaintenanceHistory> = store.snapshot().histories
+    fun completedHistory(bikeId: String): List<MaintenanceHistory> = store.snapshot(includeRideEvidence = false).histories
         .filter { it.bikeId == bikeId }
         .sortedWith(compareByDescending<MaintenanceHistory> { it.performedDate }.thenBy { it.id })
+
+    fun ownerReading(id: String?): OdometerReading? = id?.let { db.dao().reading(it) }
 
     fun operationApplied(operationId: String): Boolean = db.dao().operation(operationId) != null
 
@@ -35,7 +37,7 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
         val command = WriteBatch(anchors = listOf(QualifyingAnchor("anchor:$operationId", baselineId,
             historyId, expectedRevision + 1, orderReconciled)))
         if (db.dao().operation(operationId) != null) return@runInTransaction store.write(operationId, command, now)
-        val snapshot = store.snapshot()
+        val snapshot = store.snapshot(includeRideEvidence = false)
         val item = registration.items(snapshot).single { it.baseline.id == baselineId }
         val history = snapshot.histories.single { it.id == historyId }
         validateHistory(history, item.baseline.bikeId, item.effective)
@@ -45,9 +47,9 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
 
     /** Idempotent cycle selection. Uses a specifically confirmed owner reading, never GPS or a fabricated zero. */
     fun refresh(bikeId: String, readingId: String?, today: LocalDate, now: Long): MaintenanceView = db.runInTransaction<MaintenanceView> {
-        val snapshot = store.snapshot()
+        val snapshot = store.snapshot(includeRideEvidence = false)
         val bike = snapshot.bikes.single { it.id == bikeId }
-        val km = reading(snapshot, bikeId, readingId)
+        val km = reading(snapshot, bikeId, readingId)?.takeIf { snapshot.readings.single { it.id == readingId }.observed!!.epochMillis <= now }
         val items = registration.items(snapshot).filter { it.baseline.bikeId == bikeId }
         // Validate all fixed grids before any materialization or write. A rejected refresh is safe to repeat after restart.
         val selectedMarks = items.associate { item ->
@@ -93,7 +95,7 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
                 RuleSupport.MANUAL_REVIEW -> Unit
             }
         }
-        view(store.snapshot(), bikeId, km, today)
+        view(store.snapshot(includeRideEvidence = false), bikeId, km, today, readingFresh(snapshot, readingId, now))
     }
 
     /** Atomic reconciliation primitive for TASK-16. History must describe precisely one performed action.
@@ -102,7 +104,7 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
     fun reconcile(operationId: String, history: MaintenanceHistory, selected: List<ObligationSelection>, now: Long, anchorChoice: AnchorChoice? = null): Boolean =
         db.runInTransaction<Boolean> {
             require(selected.isNotEmpty() && selected.map { it.id }.distinct().size == selected.size)
-            val snapshot = store.snapshot()
+            val snapshot = store.snapshot(includeRideEvidence = false)
             val rows = selected.map { selection -> snapshot.occurrences.single { it.id == selection.id } }
             val links = rows.map { row -> ObligationSatisfaction(row.id, history.id, row.originalKm,
                 row.originalDate, row.effectiveKm, row.effectiveDate, selected.single { it.id == row.id }.revision) }
@@ -136,12 +138,12 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
         }
 
     /** Read retained work without adopting any new marks, including after a review-required jump. */
-    fun existing(bikeId: String, readingId: String?, today: LocalDate): MaintenanceView = db.runInTransaction<MaintenanceView> {
-        val snapshot = store.snapshot()
-        view(snapshot, bikeId, reading(snapshot, bikeId, readingId), today)
+    fun existing(bikeId: String, readingId: String?, today: LocalDate, now: Long = System.currentTimeMillis()): MaintenanceView = db.runInTransaction<MaintenanceView> {
+        val snapshot = store.snapshot(includeRideEvidence = false)
+        view(snapshot, bikeId, reading(snapshot, bikeId, readingId)?.takeIf { snapshot.readings.single { row -> row.id == readingId }.observed!!.epochMillis <= now }, today, readingFresh(snapshot, readingId, now))
     }
 
-    fun view(snapshot: WriteBatch, bikeId: String, currentKm: Long?, today: LocalDate): MaintenanceView {
+    fun view(snapshot: WriteBatch, bikeId: String, currentKm: Long?, today: LocalDate, mileageFresh: Boolean = true): MaintenanceView {
         val bike = snapshot.bikes.single { it.id == bikeId }
         val open = snapshot.occurrences.filter { it.bikeId == bikeId && it.state != OccurrenceState.COMPLETED &&
             snapshot.occurrences.none { child -> child.parentId == it.id } }
@@ -157,7 +159,7 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
                     else link?.branch == MILEAGE || (link?.branch == INTERVAL && row.rule.intervalKm != null)
                 val expectsDate = if (row.kind != MaintenanceKind.PREVENTIVE || (!original && rescheduled)) date != null
                     else link?.branch == CALENDAR || (link?.branch == INTERVAL && row.rule.intervalMonths != null)
-                return DueEvaluation.evaluate(DueTargets(km, date?.let(LocalDate::parse), expectsKm, expectsDate), currentKm, today, review)
+                return DueEvaluation.evaluate(DueTargets(km, date?.let(LocalDate::parse), expectsKm, expectsDate), currentKm, today, review, mileageFresh)
             }
             PendingWork(row, link?.baselineId ?: root(snapshot, row).id,
                 result(row.originalKm, row.originalDate, true), result(row.effectiveKm, row.effectiveDate, false),
@@ -187,7 +189,7 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
                 RuleSupport.MANUAL_REVIEW -> DueTargets()
             }
             val review = support in listOf(RuleSupport.CONDITIONAL_INTERVAL, RuleSupport.MANUAL_REVIEW)
-            val base = DueEvaluation.evaluate(targets, currentKm, today, review)
+            val base = DueEvaluation.evaluate(targets, currentKm, today, review, mileageFresh)
             // Current recurrence uses one physical completion. Older adopted work is shown separately.
             RuleDue(item, support, base, currentAnchor?.id, pending,
                 snapshot.anchors.filter { it.baselineId == item.baseline.id }.maxOfOrNull { it.revision } ?: 0)
@@ -233,6 +235,11 @@ class MaintenanceRepository(private val db: MotoLogDatabase) {
             else require(orderReconciled) { "Service order is uncertain; explicit owner reconciliation required" }
         }
     }
+
+    private fun readingFresh(snapshot: WriteBatch, id: String?, now: Long): Boolean =
+        snapshot.readings.find { it.id == id }?.observed?.let {
+            now - it.epochMillis in 0..org.wastingnotime.motolog.domain.fuel.FuelProjection.FRESH_MILLIS
+        } ?: false
 
     private fun reading(snapshot: WriteBatch, bikeId: String, id: String?): Long? = id?.let {
         snapshot.readings.single { row -> row.id == it }.also { row ->

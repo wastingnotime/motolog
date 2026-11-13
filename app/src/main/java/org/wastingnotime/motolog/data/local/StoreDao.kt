@@ -76,4 +76,18 @@ internal interface StoreDao {
     @Query("SELECT * FROM RideGap WHERE rideId = :rideId ORDER BY started_epochMillis DESC LIMIT 20")
     fun recentGaps(rideId: String): List<RideGap>
 
+    @Query("SELECT * FROM FuelEvent WHERE bikeId = :bike ORDER BY observed_epochMillis DESC, id DESC")
+    fun fuelForBike(bike: String): List<FuelEvent>
+    @Query("SELECT * FROM OdometerReading WHERE bikeId = :bike ORDER BY observed_epochMillis DESC, id DESC")
+    fun readingsForBike(bike: String): List<OdometerReading>
+    @Query("SELECT * FROM RideSession WHERE bikeId = :bike ORDER BY recordedAt DESC, id DESC LIMIT 20 OFFSET :offset")
+    fun ridePage(bike: String, offset: Int): List<RideSession>
+    @Query("SELECT * FROM RideTotal WHERE rideId = :ride") fun total(ride: String): RideTotal?
+    @Upsert fun project(row: RideTotal)
+    @Query("SELECT * FROM RideSample WHERE rideId = :ride AND sequence > :after AND speedEvent = 1 ORDER BY sequence LIMIT 20")
+    fun speedEvents(ride: String, after: Long): List<RideSample>
+    @Query("SELECT COUNT(*) FROM RideGap WHERE rideId = :ride") fun gapCount(ride: String): Long
+    @Query("SELECT COUNT(*) FROM QualityFix WHERE rideId = :ride AND rejection IS NOT NULL") fun rejectedCount(ride: String): Long
+    @Query("SELECT * FROM RideGap WHERE rideId = :ride ORDER BY started_epochMillis, id LIMIT 20 OFFSET :offset")
+    fun gapPage(ride: String, offset: Int): List<RideGap>
 }

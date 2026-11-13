@@ -48,7 +48,7 @@ class RegistrationRepository(private val db: MotoLogDatabase) {
     }
 
     fun editItem(baselineId: String, expectedRevision: Int, values: RuleValues, now: Long) = db.runInTransaction {
-        val snapshot = store.snapshot()
+        val snapshot = store.snapshot(includeRideEvidence = false)
         val item = items(snapshot).single { it.baseline.id == baselineId }
         require(item.revision == expectedRevision) { "Checklist changed; reload before saving" }
         val revision = expectedRevision + 1
@@ -61,7 +61,7 @@ class RegistrationRepository(private val db: MotoLogDatabase) {
     }
 
     fun preview(draft: SetupEntry, now: Long): EntryPreview {
-        val snapshot = store.snapshot()
+        val snapshot = store.snapshot(includeRideEvidence = false)
         require(snapshot.bikes.single().id == draft.bikeId)
         require(draft.id.isNotBlank() && draft.note.isNotBlank()) { "Original source note is required" }
         draft.date?.let { require(!LocalDate.parse(it).isAfter(LocalDate.now(java.time.Clock.fixed(
@@ -90,7 +90,7 @@ class RegistrationRepository(private val db: MotoLogDatabase) {
 
     fun confirm(preview: EntryPreview, reviewedDuplicates: Boolean, now: Long): Boolean = db.runInTransaction<Boolean> {
         // A duplicate committed after preview must be displayed before it can be approved.
-        val duplicates = duplicateCandidates(preview.batch, store.snapshot())
+        val duplicates = duplicateCandidates(preview.batch, store.snapshot(includeRideEvidence = false))
         require(duplicates.all { it in preview.duplicateCandidates }) {
             "New duplicate candidates appeared. Cancel preview and preview again to review them."
         }
