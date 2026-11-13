@@ -130,7 +130,14 @@ class WritePathTest {
     @Test fun sqlitePlansUseChronologyAndSampleIndexesWithoutHistoryScansOrSorting() {
         fun plan(sql: String, vararg args: Any): List<String> =
             db.openHelper.readableDatabase.query("EXPLAIN QUERY PLAN $sql", args).use { cursor ->
-                buildList { while (cursor.moveToNext()) add(cursor.getString(cursor.getColumnIndexOrThrow("detail"))) }
+                buildList {
+                    while (cursor.moveToNext()) {
+                        // API26 SQLite includes TABLE in these labels. Preserve
+                        // the actual index/search/sort checks across both forms.
+                        add(cursor.getString(cursor.getColumnIndexOrThrow("detail"))
+                            .replace("SEARCH TABLE ", "SEARCH ").replace("SCAN TABLE ", "SCAN "))
+                    }
+                }
             }
         val readingIndex = "index_OdometerReading_bikeId_certainty_observed_epochMillis"
         for (direction in listOf("<" to "DESC", ">" to "ASC")) {
